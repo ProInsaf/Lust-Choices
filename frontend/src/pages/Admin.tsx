@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   fetchAdminPending, fetchAdminAll, fetchAdminStats,
   adminApprove, adminReject, adminDelete, fetchAdminUsers, adminToggleBan, adminAddBalance
@@ -7,8 +7,7 @@ import { Story, HARDNESS_LABEL, UserProfile } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
 import {
-  Check, X, Trash2, Eye, Clock, BarChart2,
-  ChevronLeft, ArrowLeft, ImageIcon
+  Check, X, Trash2, Eye, ArrowLeft
 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Search, Flame, TrendingUp, Heart, Gift, Star, SlidersHorizontal, X } from 'lucide-react';
+import { Search, Flame, TrendingUp, Heart, Gift, Star, X } from 'lucide-react';
 import { fetchStories } from '../api';
 import { Story, SortFilter } from '../types';
 import StoryCard from '../components/StoryCard';

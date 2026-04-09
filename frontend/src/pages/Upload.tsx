@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Upload as UploadIcon, FileJson, ImageIcon, X, ChevronDown, Plus, Check } from 'lucide-react';
+import { Upload as UploadIcon, FileJson, ImageIcon, X, Check } from 'lucide-react';
 import { uploadStory } from '../api';
 import { useAppStore } from '../store';
 import { useNavigate } from 'react-router-dom';
