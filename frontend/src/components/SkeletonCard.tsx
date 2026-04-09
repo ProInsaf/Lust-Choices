@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function SkeletonCard() {
   return (
     <div className="bg-card rounded-2xl overflow-hidden border border-border">

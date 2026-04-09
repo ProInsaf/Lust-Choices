@@ -77,7 +77,9 @@ function AppContent() {
             last_name: tgUser.last_name || null,
             photo_url: null,
             is_admin: false,
+            is_banned: false,
             stars_balance: 0,
+            total_spent_stars: 0,
             created_at: new Date().toISOString(),
           });
         });
