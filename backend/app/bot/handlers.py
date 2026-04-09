@@ -28,17 +28,26 @@ async def get_story_json(story_id: str, json_url: str) -> Optional[Dict]:
     """Fetch story JSON from cache or URL"""
     if story_id in SCENES_CACHE:
         return SCENES_CACHE[story_id]
+    
+    headers = {"User-Agent": "LustChoicesBot/1.0"}
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(json_url) as resp:
+        async with aiohttp.ClientSession(headers=headers) as session:
+            logger.info(f"Fetching JSON for {story_id} from {json_url}")
+            async with session.get(json_url, timeout=10) as resp:
                 if resp.status == 200:
-                    data = await resp.json()
-                    # Determine scenes block
-                    scenes = data.get("scenes", data)
-                    SCENES_CACHE[story_id] = scenes
-                    return scenes
+                    text = await resp.text()
+                    try:
+                        data = json.loads(text)
+                        # Determine scenes block
+                        scenes = data.get("scenes", data)
+                        SCENES_CACHE[story_id] = scenes
+                        return scenes
+                    except Exception as je:
+                        logger.error(f"JSON parse error for {story_id}: {je}")
+                else:
+                    logger.error(f"Fetch failed for {story_id}. Status: {resp.status}, URL: {json_url}")
     except Exception as e:
-        logger.error(f"Error fetching JSON for {story_id}: {e}")
+        logger.error(f"Network error fetching JSON for {story_id}: {e}")
     return None
 
 
@@ -200,7 +209,10 @@ async def cmd_start(message: Message, bot: Bot):
                     start_scene = scenes[0].get("id")
                 await play_scene_sequence(user_id, story_id, start_scene, bot, None)
             else:
-                await message.answer("Ошибка зарузки сюжета.")
+                await message.answer("❌ Ошибка загрузки сюжета. Пожалуйста, убедитесь, что файлы доступны.")
+        except Exception as e:
+            logger.error(f"Play command error: {e}")
+            await message.answer(f"❌ Системная ошибка: {str(e)}")
         finally:
             db.close()
     else:
