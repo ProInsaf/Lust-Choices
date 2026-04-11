@@ -20,9 +20,11 @@ class Story(Base):
     description = Column(Text, nullable=False)
     author_tg_id = Column(BigInteger, index=True, nullable=False)
     author_username = Column(String(100), nullable=True)
+    author_nickname = Column(String(100), nullable=True)
     author_first_name = Column(String(100), nullable=True)
 
-    preview_url = Column(String(500), nullable=False)
+    preview_url = Column(String(500), nullable=False)  # Keep for compatibility
+    preview_urls = Column(ARRAY(String), default=[]) # Multiple previews
     json_url = Column(String(500), nullable=False)
 
     tags = Column(ARRAY(String), default=[])
@@ -35,6 +37,7 @@ class Story(Base):
     likes_count = Column(Integer, default=0)
     scenes_count = Column(Integer, default=0)
     plays_count = Column(Integer, default=0)
+    total_seconds_spent = Column(BigInteger, default=0) # Engagement metric
 
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -65,6 +68,7 @@ class User(Base):
 
     tg_id = Column(BigInteger, primary_key=True)
     username = Column(String(100), nullable=True)
+    nickname = Column(String(50), nullable=True, unique=True) # Public nickname
     first_name = Column(String(100), nullable=True)
     last_name = Column(String(100), nullable=True)
     photo_url = Column(String(500), nullable=True)
@@ -72,5 +76,6 @@ class User(Base):
     is_banned = Column(Boolean, default=False)
     stars_balance = Column(Integer, default=0)
     total_spent_stars = Column(Integer, default=0)
+    total_seconds_spent = Column(BigInteger, default=0) # Engagement metric
     created_at = Column(DateTime, default=datetime.utcnow)
     last_active = Column(DateTime, default=datetime.utcnow)

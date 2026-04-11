@@ -77,13 +77,43 @@ export default function Profile() {
           )}
 
           <div className="pb-1">
-            <h1 className="text-xl font-black leading-tight">
-              {user.first_name || user.username || 'Пользователь'}
+            <h1 className="text-xl font-black leading-tight flex items-center gap-2">
+              {user.nickname || user.first_name || user.username || 'Пользователь'}
             </h1>
-            {user.username && (
-              <p className="text-muted-foreground text-sm">@{user.username}</p>
-            )}
+            <div className="flex flex-col gap-0.5 mt-1">
+               {user.username && <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">@{user.username}</p>}
+               {!user.nickname && <p className="text-primary text-[10px] font-black uppercase tracking-wider animate-pulse">Установите никнейм!</p>}
+            </div>
           </div>
+        </div>
+
+        {/* Nickname Editor */}
+        <div className="glass rounded-2xl p-4 mb-6 border border-primary/20 bg-primary/5">
+             <div className="flex items-center justify-between mb-3">
+                 <h3 className="text-xs font-black uppercase tracking-widest text-primary">Никнейм автора</h3>
+                 <span className="text-[9px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded uppercase">Public Identity</span>
+             </div>
+             <div className="flex gap-2">
+                 <input 
+                    type="text" 
+                    placeholder="Придумайте ник..."
+                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:border-primary/50 transition-all"
+                    defaultValue={user.nickname || ''}
+                    onBlur={async (e) => {
+                        const val = e.target.value.trim();
+                        if (val && val !== user.nickname) {
+                            try {
+                                const res = await (await import('../api')).updateUserNickname(user.tg_id, val);
+                                useAppStore.setState((s) => ({ user: s.user ? { ...s.user, nickname: res.nickname } : null }));
+                                WebApp.HapticFeedback.notificationOccurred('success');
+                            } catch (err: any) {
+                                WebApp.showPopup({ title: 'Ошибка', message: err.response?.data?.detail || 'Не удалось сменить ник' });
+                            }
+                        }
+                    }}
+                 />
+             </div>
+             <p className="text-[9px] text-muted-foreground mt-2 px-1">Этот ник увидят все в ваших сюжетах</p>
         </div>
 
         {/* Stats cards */}

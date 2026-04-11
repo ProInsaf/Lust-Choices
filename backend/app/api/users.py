@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from app.core.database import get_db
 from app.models.story import User
-from app.schemas.story import UserOut, UserUpsert
+from app.schemas.story import UserOut, UserUpsert, NicknameUpdate, ActivitySync
+from app.models.story import User, Story
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -53,3 +54,35 @@ def get_user(tg_id: int, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
+
+@router.post("/{tg_id}/nickname")
+def update_nickname(tg_id: int, data: NicknameUpdate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.tg_id == tg_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Check if nickname already taken
+    existing = db.query(User).filter(User.nickname == data.nickname, User.tg_id != tg_id).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Этот никнейм уже занят")
+        
+    user.nickname = data.nickname
+    db.commit()
+    return {"status": "success", "nickname": user.nickname}
+
+
+@router.post("/activity")
+def sync_activity(data: ActivitySync, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.tg_id == data.user_tg_id).first()
+    if user:
+        user.total_seconds_spent += data.seconds
+        user.last_active = datetime.utcnow()
+    
+    if data.story_id:
+        story = db.query(Story).filter(Story.id == data.story_id).first()
+        if story:
+            story.total_seconds_spent += data.seconds
+            
+    db.commit()
+    return {"status": "synced"}

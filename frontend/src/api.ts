@@ -98,6 +98,16 @@ export const upsertUser = async (profile: {
   return data;
 };
 
+export const updateUserNickname = async (tgId: number, nickname: string) => {
+  const { data } = await api.post(`/users/${tgId}/nickname`, { nickname });
+  return data;
+};
+
+export const syncActivity = async (user_tg_id: number, seconds: number, story_id?: string) => {
+  const { data } = await api.post('/users/activity', { user_tg_id, seconds, story_id });
+  return data;
+};
+
 // ─── Admin ───────────────────────────────────────────────────────────────────
 
 export const fetchAdminPending = async (): Promise<Story[]> => {
@@ -127,13 +137,47 @@ export const adminDelete = async (storyId: string) => {
   return data;
 };
 
-export const fetchAdminStats = async () => {
+export interface AdminStats {
+  summary: {
+    stories_total: number;
+    stories_pending: number;
+    stories_approved: number;
+    stories_rejected: number;
+    stories_last_7d: number;
+    users_total: number;
+    users_active_24h: number;
+    users_active_7d: number;
+    users_new_24h: number;
+    stars_spent_total: number;
+    stars_in_balances: number;
+    plays_total: number;
+    likes_total: number;
+    engagement_total_hours: number;
+    engagement_avg_minutes: number;
+    conversion_rate: number;
+    avg_purchase_value: number;
+    unique_buyers: number;
+  };
+  top_stories: { id: string; title: string; plays: number; seconds: number; author: string }[];
+  top_authors: { tg_id: number; name: string; plays: number; seconds: number }[];
+  chart_data: { date: string; new_users: number; stars_spent: number; active_users: number }[];
+}
+
+export const fetchAdminStats = async (): Promise<AdminStats> => {
   const { data } = await adminApi.get('/admin/stats');
-  return data as { total: number; pending: number; approved: number; rejected: number };
+  return data;
 };
 
-export const fetchAdminUsers = async (skip = 0): Promise<UserProfile[]> => {
-  const { data } = await adminApi.get('/admin/users', { params: { skip } });
+export const adminBroadcast = async (message: string, userId?: number) => {
+  const formData = new FormData();
+  formData.append('message', message);
+  if (userId) formData.append('user_id', String(userId));
+  const { data } = await adminApi.post('/admin/broadcast', formData);
+  return data;
+};
+
+export const fetchAdminUsers = async (skip = 0, search = ''): Promise<UserProfile[]> => {
+  const { data } = await adminApi.get('/admin/users', { params: { skip, search: search || undefined } });
   return data;
 };
 

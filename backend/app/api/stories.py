@@ -18,7 +18,7 @@ HARDNESS_LABEL = {1: "Soft", 2: "Medium", 3: "Hard", 4: "Extreme"}
 
 @router.get("/", response_model=List[StoryOut])
 def get_stories(
-    sort: str = Query("new", enum=["new", "popular", "top_liked", "free", "paid"]),
+    sort: str = Query("new", enum=["new", "popular", "top_liked", "free", "paid", "recommended"]),
     search: Optional[str] = Query(None),
     tag: Optional[str] = Query(None),
     skip: int = Query(0, ge=0),
@@ -31,6 +31,7 @@ def get_stories(
         q = q.filter(Story.title.ilike(f"%{search}%"))
     if tag:
         q = q.filter(Story.tags.any(tag))
+
     if sort == "new":
         q = q.order_by(desc(Story.created_at))
     elif sort == "popular":
@@ -41,6 +42,18 @@ def get_stories(
         q = q.filter(Story.price_stars == 0).order_by(desc(Story.created_at))
     elif sort == "paid":
         q = q.filter(Story.price_stars > 0).order_by(desc(Story.created_at))
+    elif sort == "recommended":
+        # Score = (Plays * 1) + (Likes * 5) + (EngagementMinutes * 2) + (Recency weight)
+        # We'll use a simplified version in SQL
+        now = func.now()
+        q = q.order_by(
+            desc(
+                Story.plays_count * 1 + 
+                Story.likes_count * 5 + 
+                Story.total_seconds_spent / 30 +
+                func.exp(-func.extract('epoch', now - Story.created_at) / 86400.0) * 100
+            )
+        )
 
     return q.offset(skip).limit(limit).all()
 
@@ -71,18 +84,30 @@ async def create_story(
     price_stars: int = Form(0),
     author_tg_id: int = Form(...),
     author_username: Optional[str] = Form(None),
+    author_nickname: Optional[str] = Form(None),
     author_first_name: Optional[str] = Form(None),
-    preview_file: UploadFile = File(...),
+    preview_file: UploadFile = File(...), # Primary preview
+    preview_extra: List[UploadFile] = File([]), # Extra previews
     json_file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
     story_id = str(uuid.uuid4())
 
-    # Upload preview image
+    # Upload primary preview image
     preview_bytes = await preview_file.read()
     ext = preview_file.filename.rsplit(".", 1)[-1].lower() if "." in preview_file.filename else "jpg"
     preview_path = f"{story_id}/preview.{ext}"
     preview_url = upload_file(PREVIEW_BUCKET, preview_path, preview_bytes, preview_file.content_type or "image/jpeg")
+    
+    preview_urls = [preview_url]
+    
+    # Upload extra previews
+    for i, file in enumerate(preview_extra):
+        f_bytes = await file.read()
+        f_ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "jpg"
+        f_path = f"{story_id}/preview_{i+1}.{f_ext}"
+        f_url = upload_file(PREVIEW_BUCKET, f_path, f_bytes, file.content_type or "image/jpeg")
+        preview_urls.append(f_url)
 
     # Upload JSON story
     json_bytes = await json_file.read()
@@ -93,10 +118,10 @@ async def create_story(
     scenes_count = 0
     try:
         data = json.loads(json_bytes)
-        if isinstance(data, list):
-            scenes_count = len(data)
-        elif isinstance(data, dict):
+        if hasattr(data, "get"):
             scenes_count = len(data.get("scenes", data.get("nodes", [])))
+        elif isinstance(data, list):
+            scenes_count = len(data)
     except Exception:
         pass
 
@@ -111,8 +136,10 @@ async def create_story(
         price_stars=price_stars,
         author_tg_id=author_tg_id,
         author_username=author_username,
+        author_nickname=author_nickname,
         author_first_name=author_first_name,
         preview_url=preview_url,
+        preview_urls=preview_urls,
         json_url=json_url,
         scenes_count=scenes_count,
     )

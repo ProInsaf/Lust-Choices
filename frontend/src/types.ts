@@ -2,7 +2,7 @@
 
 export type StoryStatus = 'pending' | 'approved' | 'rejected';
 
-export type SortFilter = 'new' | 'popular' | 'top_liked' | 'free' | 'paid';
+export type SortFilter = 'new' | 'popular' | 'top_liked' | 'free' | 'paid' | 'recommended';
 
 export const HARDNESS_LABEL: Record<number, string> = {
   1: 'Soft',
@@ -24,8 +24,10 @@ export interface Story {
   description: string;
   author_tg_id: number;
   author_username: string | null;
+  author_nickname: string | null;
   author_first_name: string | null;
   preview_url: string;
+  preview_urls: string[];
   json_url: string;
   tags: string[];
   hardness_level: number;
@@ -35,12 +37,14 @@ export interface Story {
   likes_count: number;
   scenes_count: number;
   plays_count: number;
+  total_seconds_spent: number;
   created_at: string;
 }
 
 export interface UserProfile {
   tg_id: number;
   username: string | null;
+  nickname: string | null;
   first_name: string | null;
   last_name: string | null;
   photo_url: string | null;
@@ -48,5 +52,7 @@ export interface UserProfile {
   is_banned: boolean;
   stars_balance: number;
   total_spent_stars: number;
+  total_seconds_spent: number;
   created_at: string;
+  last_active: string;
 }

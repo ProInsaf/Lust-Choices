@@ -28,6 +28,7 @@ export default function Upload() {
 
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [previewPreview, setPreviewPreview] = useState<string | null>(null);
+  const [extraPreviews, setExtraPreviews] = useState<{file: File, url: string}[]>([]);
   const [jsonFile, setJsonFile] = useState<File | null>(null);
 
   const [submitting, setSubmitting] = useState(false);
@@ -35,6 +36,7 @@ export default function Upload() {
   const [error, setError] = useState('');
 
   const previewRef = useRef<HTMLInputElement>(null);
+  const extraRef = useRef<HTMLInputElement>(null);
   const jsonRef = useRef<HTMLInputElement>(null);
 
   const handlePreviewSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,6 +44,22 @@ export default function Upload() {
     if (!file) return;
     setPreviewFile(file);
     setPreviewPreview(URL.createObjectURL(file));
+  };
+
+  const handleExtraSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    
+    const newExtras = files.map(f => ({
+        file: f,
+        url: URL.createObjectURL(f)
+    })).slice(0, 4 - extraPreviews.length); // Max 5 photos total (1 primary + 4 extra)
+
+    setExtraPreviews([...extraPreviews, ...newExtras]);
+  };
+
+  const removeExtra = (index: number) => {
+    setExtraPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleJsonSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,8 +99,14 @@ export default function Upload() {
     fd.append('price_stars', isFree ? '0' : String(priceStars));
     fd.append('author_tg_id', String(user.tg_id));
     fd.append('author_username', user.username || '');
+    fd.append('author_nickname', user.nickname || '');
     fd.append('author_first_name', user.first_name || '');
     fd.append('preview_file', previewFile);
+    
+    extraPreviews.forEach(ep => {
+        fd.append('preview_extra', ep.file);
+    });
+
     fd.append('json_file', jsonFile);
 
     try {
@@ -122,6 +146,21 @@ export default function Upload() {
       </div>
 
       <div className="px-4 space-y-5">
+        {/* Nickname check */}
+        {!user?.nickname && (
+            <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4 flex flex-col gap-2">
+                <p className="text-xs font-bold leading-normal">
+                    ⚠️ У вас не установлен <b className="text-primary italic">Никнейм</b>. Сюжет будет опубликован под вашим именем из Telegram.
+                </p>
+                <button 
+                  onClick={() => navigate('/profile')}
+                  className="text-[10px] font-black uppercase tracking-widest text-primary text-left border-b border-primary/20 w-fit"
+                >
+                    Установить сейчас →
+                </button>
+            </div>
+        )}
+
         {/* Title */}
         <div>
           <label className="block text-sm font-semibold mb-1.5">
@@ -154,51 +193,77 @@ export default function Upload() {
         </div>
 
         {/* Files */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Preview image */}
-          <div
-            onClick={() => previewRef.current?.click()}
-            className="relative border-2 border-dashed border-border rounded-2xl overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
-            style={{ minHeight: 120 }}
-          >
-            {previewPreview ? (
-              <>
-                <img src={previewPreview} alt="preview" className="w-full h-full object-cover absolute inset-0" />
-                <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                  <span className="text-white text-xs font-medium">Изменить</span>
+        <div className="space-y-4">
+          <label className="block text-sm font-semibold mb-1">Файлы превью и сюжета <span className="text-primary">*</span></label>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Primary Preview image */}
+            <div
+                onClick={() => previewRef.current?.click()}
+                className="relative border-2 border-dashed border-border rounded-2xl overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+                style={{ height: 120 }}
+            >
+                {previewPreview ? (
+                <>
+                    <img src={previewPreview} alt="preview" className="w-full h-full object-cover absolute inset-0" />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                    <span className="text-white text-[10px] font-black uppercase tracking-widest">Главное фото</span>
+                    </div>
+                </>
+                ) : (
+                <div className="flex flex-col items-center justify-center h-full p-4 text-center">
+                    <ImageIcon className="w-8 h-8 text-muted-foreground mb-2" />
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Обложка</span>
                 </div>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full p-4 text-center">
-                <ImageIcon className="w-8 h-8 text-muted-foreground mb-2" />
-                <span className="text-xs font-medium text-muted-foreground">Превью</span>
-                <span className="text-[10px] text-muted-foreground">JPG / PNG</span>
-              </div>
-            )}
-            <input ref={previewRef} type="file" accept="image/*" className="hidden" onChange={handlePreviewSelect} />
+                )}
+                <input ref={previewRef} type="file" accept="image/*" className="hidden" onChange={handlePreviewSelect} />
+            </div>
+
+            {/* JSON file */}
+            <div
+                onClick={() => jsonRef.current?.click()}
+                className={`border-2 border-dashed rounded-2xl cursor-pointer hover:border-primary/50 transition-colors flex flex-col items-center justify-center p-4 text-center ${
+                jsonFile ? 'border-green-500/50 bg-green-900/20' : 'border-border'
+                }`}
+            >
+                {jsonFile ? (
+                <>
+                    <Check className="w-8 h-8 text-green-400 mb-2" />
+                    <span className="text-[10px] font-black text-green-400 break-all uppercase">{jsonFile.name.slice(0, 15)}</span>
+                </>
+                ) : (
+                <>
+                    <FileJson className="w-8 h-8 text-muted-foreground mb-2" />
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase">Сюжет JSON</span>
+                </>
+                )}
+                <input ref={jsonRef} type="file" accept=".json,application/json" className="hidden" onChange={handleJsonSelect} />
+            </div>
           </div>
 
-          {/* JSON file */}
-          <div
-            onClick={() => jsonRef.current?.click()}
-            className={`border-2 border-dashed rounded-2xl cursor-pointer hover:border-primary/50 transition-colors flex flex-col items-center justify-center p-4 text-center ${
-              jsonFile ? 'border-green-500/50 bg-green-900/20' : 'border-border'
-            }`}
-          >
-            {jsonFile ? (
-              <>
-                <Check className="w-8 h-8 text-green-400 mb-2" />
-                <span className="text-xs font-medium text-green-400 break-all">{jsonFile.name.slice(0, 20)}</span>
-              </>
-            ) : (
-              <>
-                <FileJson className="w-8 h-8 text-muted-foreground mb-2" />
-                <span className="text-xs font-medium text-muted-foreground">Файл сюжета</span>
-                <span className="text-[10px] text-muted-foreground">.json</span>
-              </>
-            )}
-            <input ref={jsonRef} type="file" accept=".json,application/json" className="hidden" onChange={handleJsonSelect} />
+          {/* Extra Previews */}
+          <div className="grid grid-cols-4 gap-2">
+                {extraPreviews.map((ep, idx) => (
+                    <div key={idx} className="aspect-square relative rounded-xl overflow-hidden border border-border group animate-scale-in">
+                        <img src={ep.url} className="w-full h-full object-cover" />
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); removeExtra(idx); }}
+                            className="absolute top-1 right-1 bg-black/60 rounded-lg p-1 text-white border border-white/10 active:scale-90"
+                        >
+                            <X className="w-3 h-3" />
+                        </button>
+                    </div>
+                ))}
+                {extraPreviews.length < 4 && (
+                    <button 
+                        onClick={() => extraRef.current?.click()}
+                        className="aspect-square border-2 border-dashed border-border rounded-xl flex items-center justify-center text-muted-foreground hover:border-border/60 hover:bg-muted/10 transition-all active:scale-95"
+                    >
+                        <UploadIcon className="w-5 h-5" />
+                        <input ref={extraRef} type="file" accept="image/*" multiple className="hidden" onChange={handleExtraSelect} />
+                    </button>
+                )}
           </div>
+          <p className="text-[10px] text-muted-foreground px-1 font-medium">Можно добавить до 4-х дополнительных кадров из сюжета</p>
         </div>
 
         {/* Tags */}

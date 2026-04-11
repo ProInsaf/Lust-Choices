@@ -109,22 +109,48 @@ export default function StoryDetail() {
   const hardnessLabel = HARDNESS_LABEL[story.hardness_level];
 
   return (
+  const [activeImg, setActiveImg] = useState(0);
+  const images = story.preview_urls && story.preview_urls.length > 0 ? story.preview_urls : [story.preview_url];
+
+  return (
     <div className="min-h-screen pb-24 animate-fade-in">
-      {/* ── Hero Image ── */}
+      {/* ── Hero Image Gallery ── */}
       <div className="relative">
-        <div className="h-72 overflow-hidden relative">
-          <img
-            src={story.preview_url}
-            alt={story.title}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
+        <div className="h-80 overflow-hidden relative bg-black">
+          <div 
+            className="flex transition-transform duration-500 ease-out h-full"
+            style={{ transform: `translateX(-${activeImg * 100}%)`, width: `${images.length * 100}%` }}
+          >
+            {images.map((img, i) => (
+                <img
+                    key={i}
+                    src={img}
+                    alt={`${story.title} ${i}`}
+                    className="w-full h-full object-cover flex-shrink-0"
+                    style={{ width: `${100 / images.length}%` }}
+                />
+            ))}
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent pointer-events-none" />
+          
+          {/* Gallery Indicators */}
+          {images.length > 1 && (
+              <div className="absolute bottom-10 left-0 right-0 flex justify-center gap-1.5 z-20">
+                  {images.map((_, i) => (
+                      <button 
+                        key={i} 
+                        onClick={() => setActiveImg(i)}
+                        className={`h-1 rounded-full transition-all ${activeImg === i ? 'w-6 bg-primary' : 'w-2 bg-white/30'}`}
+                      />
+                  ))}
+              </div>
+          )}
         </div>
 
         {/* Back button */}
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 glass p-2.5 rounded-full text-white"
+          className="absolute top-4 left-4 glass p-2.5 rounded-full text-white z-30 shadow-xl"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -149,40 +175,46 @@ export default function StoryDetail() {
               </span>
             )}
           </div>
-          <h1 className="text-2xl font-black text-foreground leading-tight">{story.title}</h1>
+          <h1 className="text-2xl font-black text-foreground leading-tight tracking-tight">{story.title}</h1>
         </div>
 
         {/* Meta info */}
-        <div className="glass rounded-xl p-3 mb-4 grid grid-cols-3 divide-x divide-white/10">
+        <div className="glass rounded-xl p-3 mb-4 grid grid-cols-3 divide-x divide-white/10 border border-white/5">
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
+            <div className="flex items-center gap-1 text-muted-foreground text-[10px] font-black uppercase mb-1">
               <Film className="w-3 h-3" />
               <span>Сцены</span>
             </div>
-            <span className="font-bold text-sm">{story.scenes_count}</span>
+            <span className="font-black text-sm">{story.scenes_count}</span>
           </div>
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
+            <div className="flex items-center gap-1 text-muted-foreground text-[10px] font-black uppercase mb-1">
               <Heart className="w-3 h-3" />
               <span>Лайки</span>
             </div>
-            <span className="font-bold text-sm">{likesCount}</span>
+            <span className="font-black text-sm">{likesCount}</span>
           </div>
           <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1 text-muted-foreground text-xs mb-1">
+            <div className="flex items-center gap-1 text-muted-foreground text-[10px] font-black uppercase mb-1">
               <Play className="w-3 h-3" />
               <span>Играли</span>
             </div>
-            <span className="font-bold text-sm">{story.plays_count}</span>
+            <span className="font-black text-sm">{story.plays_count}</span>
           </div>
         </div>
 
         {/* Author */}
-        <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
-          <User className="w-4 h-4" />
-          <span>@{story.author_username || story.author_first_name || 'anonymous'}</span>
-          <Calendar className="w-4 h-4 ml-auto" />
-          <span>{new Date(story.created_at).toLocaleDateString('ru-RU')}</span>
+        <div className="flex items-center gap-2 mb-4 text-xs font-bold">
+          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-[10px] font-black">
+              {story.author_nickname?.[0] || story.author_first_name?.[0] || 'A'}
+          </div>
+          <span className="text-foreground">
+              {story.author_nickname || story.author_first_name || story.author_username || 'anonymous'}
+          </span>
+          <div className="ml-auto flex items-center gap-1.5 text-muted-foreground opacity-60">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>{new Date(story.created_at).toLocaleDateString('ru-RU')}</span>
+          </div>
         </div>
 
         {/* Description */}
