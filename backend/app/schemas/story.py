@@ -29,7 +29,7 @@ class StoryOut(StoryBase):
     author_nickname: Optional[str] = None
     author_first_name: Optional[str] = None
     preview_url: str
-    preview_urls: List[str] = []
+    preview_urls: Optional[List[str]] = []
     json_url: str
     status: StoryStatus
     reject_reason: Optional[str] = None
