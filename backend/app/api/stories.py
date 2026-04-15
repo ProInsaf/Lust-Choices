@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.storage import upload_file, delete_file, PREVIEW_BUCKET, JSON_BUCKET
 from app.models.story import Story, StoryStatus, Like, Purchase, User
 from app.schemas.story import StoryOut, PaymentVerify
+from app.core.recommendation import get_recommended_stories_for_user, update_user_tag_scores
 
 router = APIRouter(prefix="/stories", tags=["Stories"])
 
@@ -21,10 +22,14 @@ def get_stories(
     sort: str = Query("new", enum=["new", "popular", "top_liked", "free", "paid", "recommended"]),
     search: Optional[str] = Query(None),
     tag: Optional[str] = Query(None),
+    user_tg_id: Optional[int] = Query(None),
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=50),
     db: Session = Depends(get_db),
 ):
+    if sort == "recommended" and user_tg_id is not None:
+        return get_recommended_stories_for_user(db, user_tg_id, limit)
+
     q = db.query(Story).filter(Story.status == StoryStatus.approved)
 
     if search:
@@ -171,6 +176,8 @@ def toggle_like(story_id: str, user_tg_id: int, db: Session = Depends(get_db)):
         db.add(Like(story_id=story.id, user_tg_id=user_tg_id))
         story.likes_count += 1
         db.commit()
+        # Update recommendation affinity
+        update_user_tag_scores(db, user_tg_id, story.tags, detail_value=2.0)
         return {"liked": True, "likes_count": story.likes_count}
 
 
@@ -193,6 +200,8 @@ def record_play(story_id: str, user_tg_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Story not found")
     story.plays_count += 1
     db.commit()
+    # Boost affinity whenever user plays a story
+    update_user_tag_scores(db, user_tg_id, story.tags, detail_value=0.5)
     return {"plays_count": story.plays_count}
 
 

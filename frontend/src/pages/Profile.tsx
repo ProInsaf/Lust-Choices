@@ -4,6 +4,7 @@ import { fetchUserStories, fetchLikedStories } from '../api';
 import { Story, HARDNESS_LABEL } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Heart, Star, ChevronRight, Clock, CheckCircle, XCircle } from 'lucide-react';
+import WebApp from '@twa-dev/sdk';
 
 const STATUS_CONFIG = {
   pending:  { label: 'На проверке', icon: <Clock className="w-3.5 h-3.5" />, cls: 'text-yellow-400 bg-yellow-900/30 border-yellow-500/30' },

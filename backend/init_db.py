@@ -1,5 +1,7 @@
 from app.core.database import engine, Base
 from app.models.story import Story, Like, Purchase, User  # noqa — triggers table registration
+from app.models.analytics import AnalyticsEvent, DailyMetric # noqa
+from app.models.recommendation import UserTagScore # noqa
 
 
 def init_db():

@@ -7,7 +7,7 @@ import Upload from './pages/Upload';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
 import { useAppStore } from './store';
-import { upsertUser } from './api';
+import { upsertUser, trackEvent } from './api';
 import { Home, PlusCircle, User } from 'lucide-react';
 
 // ─── Nav Item ────────────────────────────────────────────────────────────────
@@ -67,12 +67,16 @@ function AppContent() {
         last_name: tgUser.last_name,
         photo_url: (tgUser as any).photo_url,
       })
-        .then((profile) => setUser(profile))
+        .then((profile) => {
+          setUser(profile);
+          trackEvent('app_open', profile.tg_id);
+        })
         .catch(() => {
           // Fallback offline user
           setUser({
             tg_id: tgUser.id,
             username: tgUser.username || null,
+            nickname: null,
             first_name: tgUser.first_name || null,
             last_name: tgUser.last_name || null,
             photo_url: null,
@@ -80,7 +84,9 @@ function AppContent() {
             is_banned: false,
             stars_balance: 0,
             total_spent_stars: 0,
+            total_seconds_spent: 0,
             created_at: new Date().toISOString(),
+            last_active: new Date().toISOString(),
           });
         });
     }

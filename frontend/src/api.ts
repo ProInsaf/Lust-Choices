@@ -190,3 +190,28 @@ export const adminToggleBan = async (userId: number) => {
   const { data } = await adminApi.post(`/admin/users/${userId}/ban`);
   return data;
 };
+
+// ─── Analytics ───────────────────────────────────────────────────────────────
+
+export const trackEvent = async (
+  eventType: string,
+  userTgId?: number,
+  storyId?: string,
+) => {
+  try {
+    await api.post('/analytics/event', {
+      event_type: eventType,
+      user_tg_id: userTgId || null,
+      story_id: storyId || null,
+    });
+  } catch {
+    // Silently fail — analytics should never block UI
+  }
+};
+
+export const fetchRecommended = async (userTgId: number, limit = 10): Promise<Story[]> => {
+  const { data } = await api.get('/stories/', {
+    params: { sort: 'recommended', user_tg_id: userTgId, limit },
+  });
+  return data;
+};

@@ -7,7 +7,7 @@ import { Story, HARDNESS_LABEL, UserProfile } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store';
 import {
-  Check, X, Trash2, Eye, ArrowLeft, Users, Activity, PlayCircle, Search, Trophy, Flame, Star, Send, CloudLightning, TrendingUp, DollarSign
+  Check, X, Trash2, Eye, ArrowLeft, Users, Activity, PlayCircle, Search, Trophy, Flame, Send, CloudLightning, TrendingUp, DollarSign
 } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';

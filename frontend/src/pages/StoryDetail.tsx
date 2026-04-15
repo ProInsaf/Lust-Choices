@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Heart, Play, Share2, Film, Star,
-  User, Calendar, Tag, Lock
+  Calendar, Tag, Lock, ChevronDown, ChevronUp,
+  Eye, Clock, BarChart3
 } from 'lucide-react';
-import { fetchStory, toggleLike, checkLiked, checkPurchased, recordPlay } from '../api';
+import { fetchStory, toggleLike, checkLiked, checkPurchased, recordPlay, trackEvent } from '../api';
 import { Story, HARDNESS_LABEL, HARDNESS_CLASS } from '../types';
 import { useAppStore } from '../store';
 import WebApp from '@twa-dev/sdk';
@@ -20,6 +21,12 @@ export default function StoryDetail() {
   const [likesCount, setLikesCount] = useState(0);
   const [purchased, setPurchased] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
+  const [activeImg, setActiveImg] = useState(0);
+  const [showFullDesc, setShowFullDesc] = useState(false);
+
+  // Touch swipe support
+  const touchStartX = useRef(0);
+  const touchEndX = useRef(0);
 
   useEffect(() => {
     if (!id) return;
@@ -28,6 +35,10 @@ export default function StoryDetail() {
       .then(async (s) => {
         setStory(s);
         setLikesCount(s.likes_count);
+        // Track story view
+        if (user) {
+          trackEvent('story_viewed', user.tg_id, s.id);
+        }
         if (user) {
           const [lk, pur] = await Promise.all([
             checkLiked(s.id, user.tg_id),
@@ -54,6 +65,7 @@ export default function StoryDetail() {
       const res = await toggleLike(story.id, user.tg_id);
       setLiked(res.liked);
       setLikesCount(res.likes_count);
+      WebApp.HapticFeedback.impactOccurred('light');
     } finally {
       setLikeLoading(false);
     }
@@ -62,12 +74,12 @@ export default function StoryDetail() {
   const handlePlay = async () => {
     if (!story || !user) return;
     if (!purchased && story.price_stars > 0) {
-      // Trigger Telegram Stars payment via bot
       WebApp.openTelegramLink(
         `https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'lustchoices_bot'}?start=buy_${story.id}`
       );
       return;
     }
+    trackEvent('story_started', user.tg_id, story.id);
     await recordPlay(story.id, user.tg_id);
     WebApp.openTelegramLink(
       `https://t.me/${import.meta.env.VITE_BOT_USERNAME || 'lustchoices_bot'}?start=play_${story.id}`
@@ -81,14 +93,22 @@ export default function StoryDetail() {
     );
   };
 
+  const handleSwipe = (images: string[]) => {
+    const diff = touchStartX.current - touchEndX.current;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0 && activeImg < images.length - 1) setActiveImg(a => a + 1);
+      if (diff < 0 && activeImg > 0) setActiveImg(a => a - 1);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen">
-        <div className="skeleton h-72 w-full" />
+        <div className="skeleton h-80 w-full" />
         <div className="px-4 py-6 space-y-4">
-          <div className="skeleton h-8 w-3/4 rounded" />
-          <div className="skeleton h-4 w-1/3 rounded" />
-          <div className="skeleton h-24 w-full rounded" />
+          <div className="skeleton h-8 w-3/4 rounded-xl" />
+          <div className="skeleton h-4 w-1/3 rounded-xl" />
+          <div className="skeleton h-24 w-full rounded-xl" />
         </div>
       </div>
     );
@@ -107,139 +127,202 @@ export default function StoryDetail() {
 
   const hardnessClass = HARDNESS_CLASS[story.hardness_level];
   const hardnessLabel = HARDNESS_LABEL[story.hardness_level];
-
-  return (
-  const [activeImg, setActiveImg] = useState(0);
   const images = story.preview_urls && story.preview_urls.length > 0 ? story.preview_urls : [story.preview_url];
+  const displayDescription = story.long_description || story.description;
+  const isLongDesc = displayDescription.length > 200;
+  const engagementMinutes = Math.round(story.total_seconds_spent / 60);
 
   return (
-    <div className="min-h-screen pb-24 animate-fade-in">
+    <div className="min-h-screen pb-28 animate-fade-in">
       {/* ── Hero Image Gallery ── */}
       <div className="relative">
-        <div className="h-80 overflow-hidden relative bg-black">
-          <div 
+        <div
+          className="h-[360px] overflow-hidden relative bg-black"
+          onTouchStart={(e) => { touchStartX.current = e.touches[0].clientX; }}
+          onTouchEnd={(e) => {
+            touchEndX.current = e.changedTouches[0].clientX;
+            handleSwipe(images);
+          }}
+        >
+          <div
             className="flex transition-transform duration-500 ease-out h-full"
             style={{ transform: `translateX(-${activeImg * 100}%)`, width: `${images.length * 100}%` }}
           >
             {images.map((img, i) => (
-                <img
-                    key={i}
-                    src={img}
-                    alt={`${story.title} ${i}`}
-                    className="w-full h-full object-cover flex-shrink-0"
-                    style={{ width: `${100 / images.length}%` }}
-                />
+              <img
+                key={i}
+                src={img}
+                alt={`${story.title} ${i}`}
+                className="w-full h-full object-cover flex-shrink-0"
+                style={{ width: `${100 / images.length}%` }}
+              />
             ))}
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent pointer-events-none" />
-          
+
+          {/* Gradient overlays */}
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/30 via-transparent to-background/30 pointer-events-none" />
+
           {/* Gallery Indicators */}
           {images.length > 1 && (
-              <div className="absolute bottom-10 left-0 right-0 flex justify-center gap-1.5 z-20">
-                  {images.map((_, i) => (
-                      <button 
-                        key={i} 
-                        onClick={() => setActiveImg(i)}
-                        className={`h-1 rounded-full transition-all ${activeImg === i ? 'w-6 bg-primary' : 'w-2 bg-white/30'}`}
-                      />
-                  ))}
-              </div>
+            <div className="absolute bottom-14 left-0 right-0 flex justify-center gap-1.5 z-20">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveImg(i)}
+                  className={`h-1 rounded-full transition-all duration-300 ${activeImg === i ? 'w-7 bg-primary shadow-lg shadow-primary/50' : 'w-2 bg-white/30 hover:bg-white/50'}`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Image counter badge */}
+          {images.length > 1 && (
+            <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-xl px-2.5 py-1 rounded-lg text-[10px] font-bold border border-white/10 z-20">
+              {activeImg + 1} / {images.length}
+            </div>
           )}
         </div>
 
         {/* Back button */}
         <button
           onClick={() => navigate(-1)}
-          className="absolute top-4 left-4 glass p-2.5 rounded-full text-white z-30 shadow-xl"
+          className="absolute top-4 left-4 glass p-2.5 rounded-full text-white z-30 shadow-xl active:scale-90 transition-transform"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
       </div>
 
       {/* ── Content ── */}
-      <div className="px-4 -mt-8 relative z-10">
-        {/* Title & badges */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className={`px-2.5 py-0.5 rounded-lg text-xs font-bold border border-white/10 ${hardnessClass}`}>
-              {hardnessLabel}
-            </span>
-            {story.price_stars === 0 ? (
-              <span className="bg-green-900/40 text-green-400 border border-green-500/30 px-2.5 py-0.5 rounded-lg text-xs font-bold">
-                Бесплатно
-              </span>
-            ) : (
-              <span className="bg-yellow-900/40 text-yellow-300 border border-yellow-400/30 px-2.5 py-0.5 rounded-lg text-xs font-bold flex items-center gap-1">
-                <Star className="w-3 h-3 fill-yellow-300" />
-                {story.price_stars} Stars
-              </span>
-            )}
-          </div>
-          <h1 className="text-2xl font-black text-foreground leading-tight tracking-tight">{story.title}</h1>
-        </div>
-
-        {/* Meta info */}
-        <div className="glass rounded-xl p-3 mb-4 grid grid-cols-3 divide-x divide-white/10 border border-white/5">
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1 text-muted-foreground text-[10px] font-black uppercase mb-1">
-              <Film className="w-3 h-3" />
-              <span>Сцены</span>
-            </div>
-            <span className="font-black text-sm">{story.scenes_count}</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1 text-muted-foreground text-[10px] font-black uppercase mb-1">
-              <Heart className="w-3 h-3" />
-              <span>Лайки</span>
-            </div>
-            <span className="font-black text-sm">{likesCount}</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <div className="flex items-center gap-1 text-muted-foreground text-[10px] font-black uppercase mb-1">
-              <Play className="w-3 h-3" />
-              <span>Играли</span>
-            </div>
-            <span className="font-black text-sm">{story.plays_count}</span>
-          </div>
-        </div>
-
-        {/* Author */}
-        <div className="flex items-center gap-2 mb-4 text-xs font-bold">
-          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-primary text-[10px] font-black">
-              {story.author_nickname?.[0] || story.author_first_name?.[0] || 'A'}
-          </div>
-          <span className="text-foreground">
-              {story.author_nickname || story.author_first_name || story.author_username || 'anonymous'}
+      <div className="px-4 -mt-10 relative z-10">
+        {/* Badges row */}
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <span className={`px-2.5 py-1 rounded-xl text-xs font-bold border border-white/10 ${hardnessClass}`}>
+            {hardnessLabel}
           </span>
-          <div className="ml-auto flex items-center gap-1.5 text-muted-foreground opacity-60">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{new Date(story.created_at).toLocaleDateString('ru-RU')}</span>
+          {story.price_stars === 0 ? (
+            <span className="bg-green-900/40 text-green-400 border border-green-500/30 px-2.5 py-1 rounded-xl text-xs font-bold">
+              Бесплатно
+            </span>
+          ) : (
+            <span className="bg-yellow-900/40 text-yellow-300 border border-yellow-400/30 px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1">
+              <Star className="w-3 h-3 fill-yellow-300" />
+              {story.price_stars} Stars
+            </span>
+          )}
+          {story.completion_rate > 0 && (
+            <span className="bg-purple-900/40 text-purple-300 border border-purple-400/30 px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1">
+              <BarChart3 className="w-3 h-3" />
+              {Math.round(story.completion_rate)}%
+            </span>
+          )}
+        </div>
+
+        {/* Title */}
+        <h1 className="text-2xl font-black text-foreground leading-tight tracking-tight mb-3">{story.title}</h1>
+
+        {/* Author card */}
+        <div className="flex items-center gap-3 mb-5 bg-card/60 backdrop-blur-md rounded-2xl p-3 border border-border/40">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center text-primary text-sm font-black border border-primary/20">
+            {story.author_nickname?.[0] || story.author_first_name?.[0] || 'A'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-sm truncate">
+              {story.author_nickname || story.author_first_name || story.author_username || 'anonymous'}
+            </div>
+            <div className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
+              {story.author_username && <span className="text-blue-400">@{story.author_username}</span>}
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 text-muted-foreground opacity-60 text-[11px] font-medium">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{new Date(story.created_at).toLocaleDateString('ru-RU')}</span>
+          </div>
+        </div>
+
+        {/* Stats cards */}
+        <div className="grid grid-cols-4 gap-2 mb-5">
+          <div className="glass rounded-2xl p-3 text-center border border-border/30">
+            <Film className="w-4 h-4 mx-auto mb-1 text-blue-400" />
+            <div className="text-sm font-black">{story.scenes_count}</div>
+            <div className="text-[9px] text-muted-foreground font-bold uppercase">Сцены</div>
+          </div>
+          <div className="glass rounded-2xl p-3 text-center border border-border/30">
+            <Heart className="w-4 h-4 mx-auto mb-1 text-red-400" />
+            <div className="text-sm font-black">{likesCount}</div>
+            <div className="text-[9px] text-muted-foreground font-bold uppercase">Лайки</div>
+          </div>
+          <div className="glass rounded-2xl p-3 text-center border border-border/30">
+            <Eye className="w-4 h-4 mx-auto mb-1 text-green-400" />
+            <div className="text-sm font-black">{story.plays_count}</div>
+            <div className="text-[9px] text-muted-foreground font-bold uppercase">Играли</div>
+          </div>
+          <div className="glass rounded-2xl p-3 text-center border border-border/30">
+            <Clock className="w-4 h-4 mx-auto mb-1 text-yellow-400" />
+            <div className="text-sm font-black">{engagementMinutes}м</div>
+            <div className="text-[9px] text-muted-foreground font-bold uppercase">Время</div>
           </div>
         </div>
 
         {/* Description */}
-        <p className="text-muted-foreground text-sm leading-relaxed mb-5">
-          {story.description}
-        </p>
+        <div className="mb-5">
+          <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-2">Описание</h3>
+          <p className={`text-muted-foreground text-sm leading-relaxed ${!showFullDesc && isLongDesc ? 'line-clamp-4' : ''}`}>
+            {displayDescription}
+          </p>
+          {isLongDesc && (
+            <button
+              onClick={() => setShowFullDesc(!showFullDesc)}
+              className="flex items-center gap-1 text-primary text-xs font-bold mt-2 hover:opacity-80 transition-opacity"
+            >
+              {showFullDesc ? <><ChevronUp className="w-3 h-3" /> Свернуть</> : <><ChevronDown className="w-3 h-3" /> Читать полностью</>}
+            </button>
+          )}
+        </div>
 
-        {/* Tags */}
-        {story.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-6">
-            {story.tags.map((tag) => (
-              <span key={tag} className="tag-badge flex items-center gap-1">
-                <Tag className="w-2.5 h-2.5" />
-                {tag}
-              </span>
-            ))}
+        {/* Characters info (if available) */}
+        {story.characters_info && typeof story.characters_info === 'object' && Object.keys(story.characters_info).length > 0 && (
+          <div className="mb-5">
+            <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3">Персонажи</h3>
+            <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
+              {Object.entries(story.characters_info).map(([name, info]) => (
+                <div key={name} className="flex-shrink-0 w-28 glass rounded-2xl p-3 border border-border/30 text-center">
+                  <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-primary/20 to-purple-500/20 flex items-center justify-center text-lg mb-2 border border-primary/10">
+                    {typeof info === 'object' && info?.emoji ? info.emoji : '👤'}
+                  </div>
+                  <div className="text-xs font-bold truncate">{name}</div>
+                  {typeof info === 'object' && info?.role && (
+                    <div className="text-[10px] text-muted-foreground truncate mt-0.5">{info.role}</div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Action buttons */}
-        <div className="flex gap-2 mb-6">
+        {/* Tags */}
+        {story.tags.length > 0 && (
+          <div className="mb-6">
+            <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-2">Теги</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {story.tags.map((tag) => (
+                <span key={tag} className="tag-badge flex items-center gap-1">
+                  <Tag className="w-2.5 h-2.5" />
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Fixed Bottom Action Bar ── */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border p-4 pb-safe">
+        <div className="flex gap-2.5">
           {/* Play / Buy */}
           <button
             onClick={handlePlay}
-            className="flex-1 btn-primary animate-pulse-glow"
+            className="flex-1 btn-primary animate-pulse-glow text-sm"
           >
             {story.price_stars > 0 && !purchased ? (
               <>
@@ -264,7 +347,7 @@ export default function StoryDetail() {
                 : 'bg-card border-border text-foreground'
             }`}
           >
-            <Heart className={`w-5 h-5 ${liked ? 'fill-red-400' : ''}`} />
+            <Heart className={`w-5 h-5 transition-transform ${liked ? 'fill-red-400 scale-110' : ''}`} />
           </button>
 
           {/* Share */}

@@ -1,8 +1,8 @@
-from sqlalchemy import Column, String, Integer, BigInteger, Enum, DateTime, ForeignKey, Boolean, Text
+from sqlalchemy import Column, String, Integer, BigInteger, Enum, DateTime, ForeignKey, Boolean, Text, Float
 import enum
 from datetime import datetime
 import uuid
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from app.core.database import Base
 
 
@@ -18,6 +18,9 @@ class Story(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     title = Column(String(255), index=True, nullable=False)
     description = Column(Text, nullable=False)
+    long_description = Column(Text, nullable=True)
+    characters_info = Column(JSONB, nullable=True)
+    completion_rate = Column(Float, default=0.0)
     author_tg_id = Column(BigInteger, index=True, nullable=False)
     author_username = Column(String(100), nullable=True)
     author_nickname = Column(String(100), nullable=True)

@@ -37,6 +37,12 @@ class StoryOut(StoryBase):
     scenes_count: int
     plays_count: int = 0
     total_seconds_spent: int = 0
+    
+    # New detailed fields
+    long_description: Optional[str] = None
+    characters_info: Optional[dict] = None
+    completion_rate: float = 0.0
+    
     created_at: datetime
 
     class Config:

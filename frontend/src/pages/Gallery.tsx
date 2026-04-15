@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Search, Flame, TrendingUp, Heart, Gift, Star, X } from 'lucide-react';
-import { fetchStories } from '../api';
+import { Search, Flame, TrendingUp, Heart, Gift, Star, X, Sparkles } from 'lucide-react';
+import { fetchStories, fetchRecommended } from '../api';
 import { Story, SortFilter } from '../types';
 import StoryCard from '../components/StoryCard';
 import SkeletonCard from '../components/SkeletonCard';
+import { useAppStore } from '../store';
 
 const FILTERS: { key: SortFilter; label: string; icon: React.ReactNode }[] = [
   { key: 'new',      label: 'Новые',    icon: <Flame className="w-3.5 h-3.5" /> },
@@ -13,12 +14,74 @@ const FILTERS: { key: SortFilter; label: string; icon: React.ReactNode }[] = [
   { key: 'paid',     label: 'Платные',  icon: <Star className="w-3.5 h-3.5" /> },
 ];
 
+/* ── Horizontal Row Component ──────────────────────────────────────────── */
+function StoryRow({ title, icon, stories, loading }: { title: string; icon: React.ReactNode; stories: Story[]; loading: boolean }) {
+  if (loading) {
+    return (
+      <div className="mb-7">
+        <div className="flex items-center gap-2 px-4 mb-3">
+          {icon}
+          <h2 className="text-sm font-black uppercase tracking-wider">{title}</h2>
+        </div>
+        <div className="flex gap-3 overflow-x-auto no-scrollbar pl-4 pr-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="flex-shrink-0 w-36">
+              <SkeletonCard />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (stories.length === 0) return null;
+
+  return (
+    <div className="mb-7">
+      <div className="flex items-center gap-2 px-4 mb-3">
+        {icon}
+        <h2 className="text-sm font-black uppercase tracking-wider">{title}</h2>
+        <span className="text-[10px] text-muted-foreground font-bold ml-auto mr-4 uppercase tracking-widest opacity-50">{stories.length}</span>
+      </div>
+      <div className="flex gap-3 overflow-x-auto no-scrollbar pl-4 pr-2 pb-1">
+        {stories.map((story, i) => (
+          <div key={story.id} className="flex-shrink-0 w-40">
+            <StoryCard story={story} style={{ animationDelay: `${i * 60}ms` }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Gallery() {
+  const { user } = useAppStore();
   const [stories, setStories] = useState<Story[]>([]);
+  const [recommended, setRecommended] = useState<Story[]>([]);
+  const [trending, setTrending] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortFilter>('new');
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [isSearchMode, setIsSearchMode] = useState(false);
+
+  // Load featured rows (For You, Trending)
+  useEffect(() => {
+    const loadFeatured = async () => {
+      try {
+        const [trendingData] = await Promise.all([
+          fetchStories('popular', '', '', 0),
+        ]);
+        setTrending(trendingData.slice(0, 10));
+
+        if (user) {
+          const rec = await fetchRecommended(user.tg_id, 10);
+          setRecommended(rec);
+        }
+      } catch { /* silent */ }
+    };
+    loadFeatured();
+  }, [user]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -40,6 +103,10 @@ export default function Gallery() {
   useEffect(() => {
     const t = setTimeout(() => setSearch(searchInput), 400);
     return () => clearTimeout(t);
+  }, [searchInput]);
+
+  useEffect(() => {
+    setIsSearchMode(searchInput.length > 0);
   }, [searchInput]);
 
   return (
@@ -92,6 +159,34 @@ export default function Gallery() {
           ))}
         </div>
       </div>
+
+      {/* ── Featured Rows (hidden during search) ── */}
+      {!isSearchMode && (
+        <>
+          {recommended.length > 0 && (
+            <StoryRow
+              title="Для тебя"
+              icon={<Sparkles className="w-4 h-4 text-yellow-400" />}
+              stories={recommended}
+              loading={false}
+            />
+          )}
+          {trending.length > 0 && (
+            <StoryRow
+              title="В тренде"
+              icon={<TrendingUp className="w-4 h-4 text-red-400" />}
+              stories={trending}
+              loading={false}
+            />
+          )}
+
+          {/* Section label */}
+          <div className="flex items-center gap-2 px-4 mb-3 mt-2">
+            <Flame className="w-4 h-4 text-orange-400" />
+            <h2 className="text-sm font-black uppercase tracking-wider">Все сюжеты</h2>
+          </div>
+        </>
+      )}
 
       {/* ── Grid ── */}
       <div className="px-4">

@@ -22,6 +22,9 @@ export interface Story {
   id: string;
   title: string;
   description: string;
+  long_description: string | null;
+  characters_info: Record<string, any> | null;
+  completion_rate: number;
   author_tg_id: number;
   author_username: string | null;
   author_nickname: string | null;

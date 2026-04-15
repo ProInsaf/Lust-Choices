@@ -9,6 +9,7 @@ import logging
 
 from app.core.database import get_db
 from app.models.story import Story, StoryStatus, User, Purchase, Like
+from app.models.analytics import DailyMetric, AnalyticsEvent
 from app.schemas.story import StoryOut, AdminAction, UserOut
 from app.core.storage import delete_file, PREVIEW_BUCKET, JSON_BUCKET
 from app.core.bot import bot
@@ -209,7 +210,7 @@ def get_stats(db: Session = Depends(get_db)):
             d = created_at.strftime('%Y-%m-%d')
             purchases_by_date[d] = purchases_by_date.get(d, 0) + amount
 
-    # DAU chart data
+    # DAU chart data (fallback)
     dau_recent = db.query(User.last_active).filter(User.last_active >= seven_days_ago).all()
     dau_by_date = {}
     for (last_active,) in dau_recent:
@@ -217,14 +218,23 @@ def get_stats(db: Session = Depends(get_db)):
             d = last_active.strftime('%Y-%m-%d')
             dau_by_date[d] = dau_by_date.get(d, 0) + 1
 
+    # Admin Chart data using DailyMetric model for better performance & accuracy
+    daily_metrics = db.query(DailyMetric).filter(DailyMetric.date >= seven_days_ago).order_by(DailyMetric.date).all()
+    
     chart_data = []
+    
+    # Pad missing days if any
     for i in range(7):
-        d = (now - timedelta(days=6 - i)).strftime('%Y-%m-%d')
+        d = (now.date() - timedelta(days=6 - i))
+        stat = next((m for m in daily_metrics if m.date.date() == d), None)
+        
+        # Fallback to legacy tracking if new Analytics Event metric is missing
+        str_d = d.strftime('%Y-%m-%d')
         chart_data.append({
-            "date": d,
-            "new_users": user_counts_by_date.get(d, 0),
-            "stars_spent": purchases_by_date.get(d, 0),
-            "active_users": dau_by_date.get(d, 0)
+            "date": str_d,
+            "new_users": stat.new_users if stat else user_counts_by_date.get(str_d, 0),
+            "stars_spent": stat.total_stars_spent if stat else purchases_by_date.get(str_d, 0),
+            "active_users": stat.dau if stat and stat.dau > 0 else dau_by_date.get(str_d, 0)
         })
 
     return {
@@ -251,6 +261,38 @@ def get_stats(db: Session = Depends(get_db)):
         "top_stories": top_stories_data,
         "top_authors": top_authors_data,
         "chart_data": chart_data
+    }
+
+
+@router.get("/stories/{story_id}/performance", dependencies=[Depends(require_admin)])
+def get_story_performance(story_id: str, db: Session = Depends(get_db)):
+    story = db.query(Story).filter(Story.id == story_id).first()
+    if not story:
+        raise HTTPException(status_code=404, detail="Story not found")
+        
+    starts = db.query(AnalyticsEvent).filter(
+        AnalyticsEvent.story_id == story_id, 
+        AnalyticsEvent.event_type == "story_started"
+    ).count()
+    
+    completes = db.query(AnalyticsEvent).filter(
+        AnalyticsEvent.story_id == story_id, 
+        AnalyticsEvent.event_type == "story_completed"
+    ).count()
+    
+    completion_rate = (completes / starts * 100) if starts > 0 else 0
+    story.completion_rate = completion_rate # Update cached value
+    db.commit()
+    
+    return {
+        "story_id": story_id,
+        "title": story.title,
+        "starts": starts,
+        "completes": completes,
+        "completion_rate": completion_rate,
+        "plays_count": story.plays_count,
+        "likes_count": story.likes_count,
+        "total_seconds_spent": story.total_seconds_spent
     }
 
 
