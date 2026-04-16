@@ -221,7 +221,11 @@ def check_purchased(story_id: str, user_tg_id: int, db: Session = Depends(get_db
 
 @router.post("/verify-payment")
 def verify_payment(data: PaymentVerify, db: Session = Depends(get_db)):
-    """Verify Telegram Stars payment and unlock story access."""
+    """Verify Telegram Stars payment and unlock story access.
+    Commission: 15% for basic authors, 10% for premium authors.
+    """
+    from app.models.story import PLATFORM_COMMISSION_BASIC, PLATFORM_COMMISSION_PREMIUM, SubscriptionTier
+
     story = db.query(Story).filter(Story.id == data.story_id).first()
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
@@ -233,6 +237,7 @@ def verify_payment(data: PaymentVerify, db: Session = Depends(get_db)):
     if existing:
         return {"status": "already_purchased"}
 
+    # Record the purchase
     purchase = Purchase(
         story_id=story.id,
         user_tg_id=data.user_tg_id,
@@ -240,8 +245,33 @@ def verify_payment(data: PaymentVerify, db: Session = Depends(get_db)):
         telegram_payment_charge_id=data.telegram_payment_charge_id,
     )
     db.add(purchase)
+
+    # Update buyer stats
+    buyer = db.query(User).filter(User.tg_id == data.user_tg_id).first()
+    if buyer:
+        buyer.total_spent_stars += data.stars_paid
+
+    # Credit author with commission deducted
+    author = db.query(User).filter(User.tg_id == story.author_tg_id).first()
+    if author:
+        commission_rate = PLATFORM_COMMISSION_PREMIUM if (
+            author.subscription_tier == SubscriptionTier.premium
+        ) else PLATFORM_COMMISSION_BASIC
+        author_share = int(data.stars_paid * (1 - commission_rate))
+        platform_cut = data.stars_paid - author_share
+        author.stars_balance += author_share
+        author.total_earned_stars += author_share
+    else:
+        author_share = 0
+        platform_cut = data.stars_paid
+
     db.commit()
-    return {"status": "success", "json_url": story.json_url}
+    return {
+        "status": "success",
+        "json_url": story.json_url,
+        "author_share": author_share,
+        "platform_cut": platform_cut,
+    }
 
 
 # ─── USER LIKED STORIES ───────────────────────────────────────────────────────

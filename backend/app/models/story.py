@@ -5,6 +5,10 @@ import uuid
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from app.core.database import Base
 
+# Platform commission rates
+PLATFORM_COMMISSION_BASIC = 0.15    # 15% for Basic users
+PLATFORM_COMMISSION_PREMIUM = 0.10  # 10% for Premium users
+
 
 class StoryStatus(str, enum.Enum):
     pending = "pending"
@@ -66,6 +70,11 @@ class Purchase(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class SubscriptionTier(str, enum.Enum):
+    basic = "basic"
+    premium = "premium"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -79,6 +88,10 @@ class User(Base):
     is_banned = Column(Boolean, default=False)
     stars_balance = Column(Integer, default=0)
     total_spent_stars = Column(Integer, default=0)
+    total_earned_stars = Column(Integer, default=0)  # Stars earned from story sales
     total_seconds_spent = Column(BigInteger, default=0) # Engagement metric
+    subscription_tier = Column(Enum(SubscriptionTier), default=SubscriptionTier.basic)
+    subscription_expires_at = Column(DateTime, nullable=True)
+    stories_created_this_month = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_active = Column(DateTime, default=datetime.utcnow)

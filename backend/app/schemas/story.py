@@ -66,7 +66,11 @@ class UserOut(BaseModel):
     is_banned: bool = False
     stars_balance: int = 0
     total_spent_stars: int = 0
+    total_earned_stars: int = 0
     total_seconds_spent: int = 0
+    subscription_tier: str = "basic"
+    subscription_expires_at: Optional[datetime] = None
+    stories_created_this_month: int = 0
     created_at: datetime
     last_active: Optional[datetime] = None
 

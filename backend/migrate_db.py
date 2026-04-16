@@ -47,8 +47,46 @@ def migrate():
             except Exception as e:
                 print(f"Error adding column '{col_name}': {e}")
 
-        # 2. Run create_all to create new tables (Analytics, Recommendation)
-        print("Creating new tables if they don't exist...")
+        # 2. Add missing columns to 'users' table (subscription + monetization)
+        print("\nChecking for missing columns in 'users' table...")
+        
+        # Create enum type if not exists
+        try:
+            conn.execute(text("CREATE TYPE subscriptiontier AS ENUM ('basic', 'premium');"))
+            conn.commit()
+            print("Created 'subscriptiontier' enum type.")
+        except Exception:
+            conn.rollback()
+            print("Enum 'subscriptiontier' already exists (ok).")
+        
+        user_columns_to_add = [
+            ("total_earned_stars", "INTEGER DEFAULT 0"),
+            ("subscription_tier", "subscriptiontier DEFAULT 'basic'"),
+            ("subscription_expires_at", "TIMESTAMP"),
+            ("stories_created_this_month", "INTEGER DEFAULT 0"),
+        ]
+        
+        for col_name, col_type in user_columns_to_add:
+            try:
+                check_query = text(f"""
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name='users' AND column_name='{col_name}';
+                """)
+                result = conn.execute(check_query).fetchone()
+                
+                if not result:
+                    print(f"Adding column 'users.{col_name}'...")
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type};"))
+                    conn.commit()
+                    print(f"Column 'users.{col_name}' added successfully.")
+                else:
+                    print(f"Column 'users.{col_name}' already exists.")
+            except Exception as e:
+                print(f"Error adding column 'users.{col_name}': {e}")
+
+        # 3. Run create_all to create new tables (Analytics, Recommendation)
+        print("\nCreating new tables if they don't exist...")
         from app.core.database import Base
         from app.models.analytics import AnalyticsEvent, DailyMetric
         from app.models.recommendation import UserTagScore

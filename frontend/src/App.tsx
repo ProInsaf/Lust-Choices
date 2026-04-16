@@ -86,7 +86,11 @@ function AppContent() {
             is_banned: false,
             stars_balance: 0,
             total_spent_stars: 0,
+            total_earned_stars: 0,
             total_seconds_spent: 0,
+            subscription_tier: 'basic',
+            subscription_expires_at: null,
+            stories_created_this_month: 0,
             created_at: new Date().toISOString(),
             last_active: new Date().toISOString(),
           });

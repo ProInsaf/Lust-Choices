@@ -44,6 +44,8 @@ export interface Story {
   created_at: string;
 }
 
+export type SubscriptionTier = 'basic' | 'premium';
+
 export interface UserProfile {
   tg_id: number;
   username: string | null;
@@ -55,7 +57,11 @@ export interface UserProfile {
   is_banned: boolean;
   stars_balance: number;
   total_spent_stars: number;
+  total_earned_stars: number;
   total_seconds_spent: number;
+  subscription_tier: SubscriptionTier;
+  subscription_expires_at: string | null;
+  stories_created_this_month: number;
   created_at: string;
   last_active: string;
 }
