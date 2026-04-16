@@ -3,8 +3,9 @@ import { useAppStore } from '../store';
 import { fetchUserStories, fetchLikedStories } from '../api';
 import { Story, HARDNESS_LABEL } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Heart, Star, ChevronRight, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { BookOpen, Heart, Star, ChevronRight, Clock, CheckCircle, XCircle, User } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
+import DailyBonus from '../components/DailyBonus';
 
 const STATUS_CONFIG = {
   pending:  { label: 'На проверке', icon: <Clock className="w-3.5 h-3.5" />, cls: 'text-yellow-400 bg-yellow-900/30 border-yellow-500/30' },
@@ -60,62 +61,67 @@ export default function Profile() {
       </div>
 
       <div className="px-4 -mt-16 relative z-10">
-        {/* Avatar */}
-        <div className="flex items-end gap-4 mb-4">
-          {user.photo_url ? (
-            <img
-              src={user.photo_url}
-              alt="avatar"
-              className="w-20 h-20 rounded-2xl border-2 border-primary object-cover glow-red"
-            />
-          ) : (
-            <div
-              className="w-20 h-20 rounded-2xl border-2 border-primary flex items-center justify-center text-3xl font-black text-white glow-red"
-              style={{ background: 'linear-gradient(135deg, hsl(346,80%,45%), hsl(270,55%,40%))' }}
-            >
-              {avatarLetter}
+        {/* Avatar & Info */}
+        <div className="flex items-center gap-5 mb-8">
+          <div className="relative">
+            {user.photo_url ? (
+                <img
+                src={user.photo_url}
+                alt="avatar"
+                className="w-24 h-24 rounded-[32px] border-4 border-background object-cover shadow-2xl z-10 relative"
+                />
+            ) : (
+                <div
+                className="w-24 h-24 rounded-[32px] border-4 border-background flex items-center justify-center text-4xl font-black text-white shadow-2xl z-10 relative"
+                style={{ background: 'linear-gradient(135deg, hsl(346,80%,45%), hsl(270,55%,40%))' }}
+                >
+                {avatarLetter}
+                </div>
+            )}
+            {/* Status Indicator */}
+            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-background rounded-full flex items-center justify-center z-20 shadow-lg">
+                <div className="w-5 h-5 bg-green-500 rounded-full border-4 border-background animate-pulse" />
             </div>
-          )}
+          </div>
 
-          <div className="pb-1">
-            <h1 className="text-xl font-black leading-tight flex items-center gap-2">
-              {user.nickname || user.first_name || user.username || 'Пользователь'}
-            </h1>
-            <div className="flex flex-col gap-0.5 mt-1">
-               {user.username && <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-wider">@{user.username}</p>}
-               {!user.nickname && <p className="text-primary text-[10px] font-black uppercase tracking-wider animate-pulse">Установите никнейм!</p>}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+                <h1 className="text-2xl font-black leading-tight truncate gradient-text">
+                {user.nickname || user.first_name || user.username || 'Пользователь'}
+                </h1>
+                {user.is_admin && <span className="bg-primary/20 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter border border-primary/30">Admin</span>}
+            </div>
+            <div className="flex flex-col gap-1">
+               {user.username && (
+                 <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider opacity-60">
+                    @{user.username}
+                 </p>
+               )}
+               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/5 rounded-full w-fit">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-primary/80">Premium Member</span>
+               </div>
             </div>
           </div>
         </div>
 
-        {/* Nickname Editor */}
-        <div className="glass rounded-2xl p-4 mb-6 border border-primary/20 bg-primary/5">
-             <div className="flex items-center justify-between mb-3">
-                 <h3 className="text-xs font-black uppercase tracking-widest text-primary">Никнейм автора</h3>
-                 <span className="text-[9px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded uppercase">Public Identity</span>
-             </div>
-             <div className="flex gap-2">
-                 <input 
-                    type="text" 
-                    placeholder="Придумайте ник..."
-                    className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-sm font-bold outline-none focus:border-primary/50 transition-all"
-                    defaultValue={user.nickname || ''}
-                    onBlur={async (e) => {
-                        const val = e.target.value.trim();
-                        if (val && val !== user.nickname) {
-                            try {
-                                const res = await (await import('../api')).updateUserNickname(user.tg_id, val);
-                                useAppStore.setState((s) => ({ user: s.user ? { ...s.user, nickname: res.nickname } : null }));
-                                WebApp.HapticFeedback.notificationOccurred('success');
-                            } catch (err: any) {
-                                WebApp.showPopup({ title: 'Ошибка', message: err.response?.data?.detail || 'Не удалось сменить ник' });
-                            }
-                        }
-                    }}
-                 />
-             </div>
-             <p className="text-[9px] text-muted-foreground mt-2 px-1">Этот ник увидят все в ваших сюжетах</p>
+        {/* Action Bar */}
+        <div className="flex gap-2 mb-8">
+            <button 
+                onClick={() => WebApp.showPopup({ title: 'Настройки', message: 'Возможность смены ника и аватара появится в следующем обновлении!' })}
+                className="flex-1 h-12 glass rounded-2xl flex items-center justify-center gap-2 text-sm font-bold active:scale-95 transition-all border border-white/5"
+            >
+                <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                </div>
+                Изменить профиль
+            </button>
+            <button className="w-12 h-12 glass rounded-2xl flex items-center justify-center active:scale-95 transition-all border border-white/5">
+                <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+            </button>
         </div>
+
+        <DailyBonus />
 
         {/* Stats cards */}
         <div className="grid grid-cols-3 gap-2 mb-6">

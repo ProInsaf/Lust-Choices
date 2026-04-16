@@ -219,26 +219,30 @@ export default function StoryDetail() {
         </div>
 
         {/* Title */}
-        <h1 className="text-2xl font-black text-foreground leading-tight tracking-tight mb-3">{story.title}</h1>
+        <div className="mb-4">
+            <h1 className="text-3xl font-black text-foreground leading-[1.15] tracking-tight mb-1 glow-text-primary">{story.title}</h1>
+            <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.2em] opacity-50">Story id: {story.id.toString().slice(0, 8)}</p>
+        </div>
 
         {/* Author card */}
-        <div className="flex items-center gap-3 mb-5 bg-card/60 backdrop-blur-md rounded-2xl p-3 border border-border/40">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/30 to-primary/10 flex items-center justify-center text-primary text-sm font-black border border-primary/20">
+        <div className="flex items-center gap-4 mb-6 glass-thick rounded-3xl p-4 border border-white/10 shadow-xl">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white text-lg font-black shadow-lg border border-white/20">
             {story.author_nickname?.[0] || story.author_first_name?.[0] || 'A'}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-bold text-sm truncate">
+            <div className="font-black text-sm truncate uppercase tracking-wider">
               {story.author_nickname || story.author_first_name || story.author_username || 'anonymous'}
             </div>
-            <div className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-              {story.author_username && <span className="text-blue-400">@{story.author_username}</span>}
+            <div className="text-[10px] text-primary font-black flex items-center gap-1 uppercase tracking-widest mt-0.5">
+               Verified Author
             </div>
           </div>
-          <div className="flex items-center gap-1.5 text-muted-foreground opacity-60 text-[11px] font-medium">
-            <Calendar className="w-3.5 h-3.5" />
-            <span>{new Date(story.created_at).toLocaleDateString('ru-RU')}</span>
+          <div className="flex flex-col items-end opacity-60">
+             <span className="text-[9px] font-black uppercase tracking-widest">Released</span>
+             <span className="text-[10px] font-bold">{new Date(story.created_at).toLocaleDateString('ru-RU')}</span>
           </div>
         </div>
+
 
         {/* Stats cards */}
         <div className="grid grid-cols-4 gap-2 mb-5">

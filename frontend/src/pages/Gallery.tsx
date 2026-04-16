@@ -5,6 +5,8 @@ import { Story, SortFilter } from '../types';
 import StoryCard from '../components/StoryCard';
 import SkeletonCard from '../components/SkeletonCard';
 import { useAppStore } from '../store';
+import TickerBanner from '../components/TickerBanner';
+import Randomizer from '../components/Randomizer';
 
 const FILTERS: { key: SortFilter; label: string; icon: React.ReactNode }[] = [
   { key: 'new',      label: 'Новые',    icon: <Flame className="w-3.5 h-3.5" /> },
@@ -110,55 +112,67 @@ export default function Gallery() {
   }, [searchInput]);
 
   return (
-    <div className="min-h-screen pb-24">
+    <div className="min-h-screen pb-24 animate-fade-in">
       {/* ── Header ── */}
-      <div className="pt-5 px-4 pb-4">
+      <div className="pt-6 px-4 pb-4 sticky top-0 z-40 bg-background/80 backdrop-blur-xl border-b border-white/5 shadow-[0_8px_30px_rgba(0,0,0,0.4)]">
         {/* Logo */}
-        <div className="flex items-center gap-2 mb-5">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center text-xl"
-            style={{ background: 'linear-gradient(135deg, hsl(346,80%,50%), hsl(270,55%,48%))' }}>
-            🔥
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-primary/20"
+                style={{ background: 'linear-gradient(135deg, hsl(346,80%,50%), hsl(270,55%,48%))' }}>
+                🔥
+            </div>
+            <div>
+                <h1 className="text-2xl font-black gradient-text leading-none tracking-tight">Lust Choices</h1>
+                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mt-0.5 opacity-60">Premium Edition</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl font-black gradient-text leading-none">Lust Choices</h1>
-            <p className="text-[10px] text-muted-foreground font-medium">18+ Interactive Stories</p>
+          
+          <div className="flex items-center gap-2">
+            <div className="glass rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 border border-white/5">
+                <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
+                <span className="text-xs font-black">{user?.stars_balance || 0}</span>
+            </div>
           </div>
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <input
             type="text"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Найти сюжет..."
-            className="w-full bg-input rounded-full py-2.5 pl-10 pr-10 text-sm border border-border focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all"
+            placeholder="Что будем читать сегодня?"
+            className="w-full bg-white/5 rounded-2xl py-3 pl-11 pr-11 text-sm font-bold border border-white/5 focus:outline-none focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all placeholder:text-muted-foreground/40"
           />
           {searchInput && (
             <button
               onClick={() => { setSearchInput(''); setSearch(''); }}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 w-7 h-7 bg-white/5 rounded-lg flex items-center justify-center"
             >
-              <X className="w-4 h-4" />
+              <X className="w-4 h-4 text-muted-foreground" />
             </button>
           )}
         </div>
 
         {/* Filter chips */}
-        <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex gap-2 mt-4 overflow-x-auto no-scrollbar pb-1">
           {FILTERS.map((f) => (
             <button
               key={f.key}
               onClick={() => setSort(f.key)}
-              className={`filter-chip flex items-center gap-1.5 ${sort === f.key ? 'filter-chip-active' : 'filter-chip-inactive'}`}
+              className={`filter-chip flex items-center gap-2 ${sort === f.key ? 'filter-chip-active' : 'filter-chip-inactive'}`}
             >
               {f.icon}
-              {f.label}
+              <span className="uppercase tracking-widest text-[10px] font-black">{f.label}</span>
             </button>
           ))}
         </div>
       </div>
+
+      {/* Community Ticker */}
+      {!isSearchMode && <TickerBanner />}
 
       {/* ── Featured Rows (hidden during search) ── */}
       {!isSearchMode && (
@@ -214,6 +228,8 @@ export default function Gallery() {
           </div>
         )}
       </div>
+
+      <Randomizer />
     </div>
   );
 }

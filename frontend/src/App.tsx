@@ -10,6 +10,8 @@ import { useAppStore } from './store';
 import { upsertUser, trackEvent } from './api';
 import { Home, PlusCircle, User } from 'lucide-react';
 
+import Onboarding from './components/Onboarding';
+
 // ─── Nav Item ────────────────────────────────────────────────────────────────
 function NavItem({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
   const location = useLocation();
@@ -20,11 +22,11 @@ function NavItem({ to, icon, label }: { to: string; icon: React.ReactNode; label
       className={`flex flex-col items-center gap-1 transition-all ${active ? 'nav-active' : 'text-muted-foreground'}`}
     >
       <div
-        className={`p-2 rounded-xl transition-all ${active ? 'bg-primary/15' : 'bg-transparent'}`}
+        className={`p-2 rounded-xl transition-all ${active ? 'bg-primary/20' : 'bg-transparent'}`}
       >
         {icon}
       </div>
-      <span className="text-[10px] font-semibold">{label}</span>
+      <span className="text-[10px] font-bold uppercase tracking-widest">{label}</span>
     </Link>
   );
 }
@@ -36,8 +38,8 @@ function BottomNav() {
   if (hidden) return null;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-xl border-t border-border pb-safe">
-      <div className="flex justify-around items-center px-6 py-2.5">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-2xl border-t border-white/5 pb-safe rounded-t-[32px] shadow-[0_-8px_30px_rgba(0,0,0,0.5)]">
+      <div className="flex justify-around items-center px-6 py-4">
         <NavItem to="/"        icon={<Home size={22} />}       label="Галерея" />
         <NavItem to="/upload"  icon={<PlusCircle size={22} />} label="Создать" />
         <NavItem to="/profile" icon={<User size={22} />}       label="Профиль" />
@@ -48,7 +50,7 @@ function BottomNav() {
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 function AppContent() {
-  const { setUser } = useAppStore();
+  const { user, setUser } = useAppStore();
 
   useEffect(() => {
     // Initialize Telegram WebApp
@@ -93,7 +95,19 @@ function AppContent() {
   }, [setUser]);
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground">
+    <div className="flex flex-col min-h-screen bg-background text-foreground relative overflow-hidden">
+      {/* Background Decor */}
+      <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px] pointer-events-none animate-float" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-secondary/10 rounded-full blur-[150px] pointer-events-none animate-float" style={{ animationDelay: '-3s' }} />
+
+      {/* Onboarding Overlay */}
+      {user && !user.nickname && (
+        <Onboarding 
+            tgId={user.tg_id} 
+            onComplete={(nick) => setUser({ ...user, nickname: nick })} 
+        />
+      )}
+
       <main className="flex-1 overflow-x-hidden overflow-y-auto">
         <Routes>
           <Route path="/"           element={<Gallery />}     />
@@ -107,6 +121,7 @@ function AppContent() {
     </div>
   );
 }
+
 
 export default function App() {
   return (
