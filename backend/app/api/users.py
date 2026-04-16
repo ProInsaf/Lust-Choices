@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
 from app.core.database import get_db
-from app.models.story import User
 from app.models.story import User, Story
 from app.schemas.story import UserOut, UserUpsert, NicknameUpdate, ActivitySync, UserUpdate
+
+router = APIRouter(prefix="/users", tags=["Users"])
+
 
 
 @router.patch("/{tg_id}", response_model=UserOut)
@@ -31,10 +33,8 @@ def update_user_profile(tg_id: int, data: UserUpdate, db: Session = Depends(get_
     return user
 
 
-router = APIRouter(prefix="/users", tags=["Users"])
-
-
 import os
+
 
 @router.post("/upsert", response_model=UserOut)
 def upsert_user(data: UserUpsert, db: Session = Depends(get_db)):
