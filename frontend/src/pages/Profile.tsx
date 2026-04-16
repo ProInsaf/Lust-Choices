@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../store';
-import { fetchUserStories, fetchLikedStories, updateUserNickname, createPremiumInvoice, verifyPremium } from '../api';
+import { fetchUserStories, fetchLikedStories, updateUserProfile } from '../api';
 import { Story, HARDNESS_LABEL } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Heart, Star, ChevronRight, Clock, CheckCircle, XCircle, Edit3, Check, X, Crown, Zap, Shield, Sparkles, TrendingUp, Gem } from 'lucide-react';
+import { BookOpen, Heart, ChevronRight, Clock, CheckCircle, XCircle, Edit3, Check, X, Crown, Zap, Shield, Sparkles, TrendingUp, Gem, ShoppingBag, Palette } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
+
 
 const STATUS_CONFIG = {
   pending:  { label: 'На проверке', icon: <Clock className="w-3.5 h-3.5" />, cls: 'text-yellow-400 bg-yellow-900/30 border-yellow-500/30' },
@@ -12,158 +13,114 @@ const STATUS_CONFIG = {
   rejected: { label: 'Отклонено',   icon: <XCircle className="w-3.5 h-3.5" />,    cls: 'text-red-400 bg-red-900/30 border-red-500/30' },
 };
 
-// ── Subscription Card ─────────────────────────────────────────────────────────
-function SubscriptionSection({ user, onUpgrade }: { user: any; onUpgrade: (newUser: any) => void }) {
-  const [loading, setLoading] = useState(false);
-  const isPremium = user.subscription_tier === 'premium';
+// ── Profile Editors ───────────────────────────────────────────────────────────
 
-  const handleUpgrade = async () => {
+function BioEditor({ tgId, currentBio, onSave }: { tgId: number; currentBio: string; onSave: (bio: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(currentBio);
+  const [loading, setLoading] = useState(false);
+
+  const handleSave = async () => {
     setLoading(true);
     try {
-      // 1. Create Invoice Link
-      const { invoice_link } = await createPremiumInvoice(user.tg_id);
-      
-      // 2. Open Telegram Invoice
-      WebApp.openInvoice(invoice_link, async (status) => {
-        if (status === 'paid') {
-          try {
-            // 3. Verify Payment and Upgrade
-            const updatedUser = await verifyPremium(user.tg_id, 'STAR_PAYMENT_PROCESSED');
-            WebApp.HapticFeedback.notificationOccurred('success');
-            WebApp.showPopup({
-              title: '👑 Premium Активирован!',
-              message: 'Поздравляем! Теперь у вас есть полный доступ ко всем функциям платформы.'
-            });
-            onUpgrade(updatedUser);
-          } catch (e) {
-            console.error('Verification failed', e);
-            WebApp.showPopup({ title: 'Ошибка', message: 'Не удалось подтвердить оплату. Обратитесь в поддержку.' });
-          }
-        } else if (status === 'cancelled') {
-           // Standard cancel, no need for popup
-        } else {
-          WebApp.showPopup({ title: 'Оплата не прошла', message: 'Произошла ошибка при проведении транзакции.' });
-        }
-        setLoading(false);
+      const res = await updateUserProfile(tgId, { bio: value });
+      onSave(res.bio || '');
+      setEditing(false);
+      WebApp.HapticFeedback.notificationOccurred('success');
+    } catch (e) {
+      WebApp.HapticFeedback.notificationOccurred('error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <div 
+        onClick={() => setEditing(true)}
+        className="mt-4 p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all group"
+      >
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">О себе</p>
+          <Edit3 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+        </div>
+        <p className="text-xs leading-relaxed italic opacity-80">
+          {currentBio || 'Расскажите о себе (жанры, которые вы любите, или ваши предпочтения)...'}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 p-4 rounded-2xl bg-white/5 border border-primary/20 animate-fade-in shadow-xl shadow-primary/10">
+      <textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="О себе..."
+        className="w-full h-24 bg-transparent text-sm focus:outline-none resize-none placeholder:text-muted-foreground/30"
+        maxLength={200}
+        autoFocus
+      />
+      <div className="flex justify-end gap-2 mt-2">
+        <button onClick={() => setEditing(false)} className="px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground">Отмена</button>
+        <button 
+          onClick={handleSave} 
+          disabled={loading}
+          className="px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-primary text-white disabled:opacity-50"
+        >
+          {loading ? '...' : 'Сохранить'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ColorPicker({ tgId, currentColor, onSave, isPremium }: { tgId: number; currentColor: string; onSave: (color: string) => void; isPremium: boolean }) {
+  const COLORS = ['#DC2650', '#7C3AED', '#2563EB', '#059669', '#D97706', '#DB2777', '#4B5563'];
+  const [loading, setLoading] = useState(false);
+
+  const handleSelect = async (color: string) => {
+    if (!isPremium) {
+      WebApp.showPopup({ 
+        title: '💎 Premium функция', 
+        message: 'Смена цвета профиля доступна только пользователям с Premium подпиской.' 
       });
-    } catch (err) {
-      console.error('Invoice creation failed', err);
-      WebApp.showPopup({ title: 'Ошибка', message: 'Не удалось создать счет на оплату. Попробуйте позже.' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await updateUserProfile(tgId, { accent_color: color });
+      onSave(res.accent_color);
+      WebApp.HapticFeedback.selectionChanged();
+    } catch (e) {
+      WebApp.HapticFeedback.notificationOccurred('error');
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center gap-2 mb-4">
-        <Crown className="w-4 h-4 text-yellow-400" />
-        <h2 className="text-sm font-black uppercase tracking-wider">Подписка</h2>
+    <div className="mt-6">
+      <div className="flex items-center gap-2 mb-3">
+        <Palette className="w-3.5 h-3.5 text-muted-foreground" />
+        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Цвет профиля</p>
       </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        {/* Basic Card */}
-        <div className={`relative rounded-2xl p-4 border transition-all ${
-          !isPremium 
-            ? 'border-primary/40 bg-primary/5 shadow-[0_0_20px_rgba(220,38,80,0.1)]' 
-            : 'border-white/5 bg-white/[0.02]'
-        }`}>
-          {!isPremium && (
-            <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-primary text-white shadow-lg">
-              Текущий
-            </div>
-          )}
-          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center mb-3">
-            <Shield className="w-5 h-5 text-muted-foreground" />
-          </div>
-          <h3 className="text-sm font-black mb-1">Basic</h3>
-          <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed">Бесплатный доступ к платформе</p>
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <Check className="w-3 h-3 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground">3 сюжета/мес</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Check className="w-3 h-3 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground">Комиссия 15%</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Check className="w-3 h-3 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground">Базовый профиль</span>
-            </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-white/5">
-            <span className="text-lg font-black">Free</span>
-          </div>
-        </div>
-
-        {/* Premium Card */}
-        <div className={`relative rounded-2xl p-4 border transition-all overflow-hidden ${
-          isPremium 
-            ? 'border-yellow-500/40 bg-yellow-500/5 shadow-[0_0_20px_rgba(234,179,8,0.1)]' 
-            : 'border-white/10 bg-white/[0.02] hover:border-yellow-500/20'
-        }`}>
-          {/* Premium glow bg */}
-          <div className="absolute top-0 right-0 w-20 h-20 bg-yellow-500/10 blur-2xl rounded-full translate-x-6 -translate-y-6 pointer-events-none" />
-          
-          {isPremium && (
-            <div className="absolute -top-2 -right-2 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-gradient-to-r from-yellow-500 to-amber-500 text-black shadow-lg">
-              Активна
-            </div>
-          )}
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-               style={{ background: 'linear-gradient(135deg, rgba(234,179,8,0.2), rgba(245,158,11,0.2))' }}>
-            <Gem className="w-5 h-5 text-yellow-400" />
-          </div>
-          <h3 className="text-sm font-black mb-1 flex items-center gap-1.5">
-            Premium
-            <Sparkles className="w-3 h-3 text-yellow-400" />
-          </h3>
-          <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed">Максимум возможностей</p>
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-1.5">
-              <Zap className="w-3 h-3 text-yellow-400" />
-              <span className="text-[10px] text-yellow-200/80">∞ сюжетов</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Zap className="w-3 h-3 text-yellow-400" />
-              <span className="text-[10px] text-yellow-200/80">Комиссия 10%</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Zap className="w-3 h-3 text-yellow-400" />
-              <span className="text-[10px] text-yellow-200/80">💎 Бейдж автора</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Zap className="w-3 h-3 text-yellow-400" />
-              <span className="text-[10px] text-yellow-200/80">Ранний доступ</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Zap className="w-3 h-3 text-yellow-400" />
-              <span className="text-[10px] text-yellow-200/80">Приоритет в ленте</span>
-            </div>
-          </div>
-          <div className="mt-3 pt-3 border-t border-yellow-500/10">
-            <span className="text-lg font-black text-yellow-400">149</span>
-            <span className="text-xs text-muted-foreground ml-1">⭐/мес</span>
-          </div>
-          {!isPremium && (
-            <button 
-              onClick={handleUpgrade}
-              disabled={loading}
-              className="w-full mt-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-black transition-all active:scale-95 flex items-center justify-center gap-2"
-              style={{ background: 'linear-gradient(135deg, #EAB308, #F59E0B)' }}
-            >
-              {loading ? (
-                <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-              ) : (
-                <>Оформить <Crown className="w-3.5 h-3.5" /></>
-              )}
-            </button>
-          )}
-        </div>
+      <div className="flex gap-2.5 overflow-x-auto no-scrollbar py-1">
+        {COLORS.map(c => (
+          <button
+            key={c}
+            onClick={() => handleSelect(c)}
+            disabled={loading}
+            className={`w-8 h-8 rounded-full border-2 transition-all active:scale-95 flex-shrink-0 ${currentColor === c ? 'border-white scale-110 shadow-lg' : 'border-transparent shadow-md opacity-70'}`}
+            style={{ backgroundColor: c }}
+          />
+        ))}
+        {!isPremium && <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 border border-dashed border-white/20 flex items-center justify-center"><Crown className="w-4 h-4 text-muted-foreground/30" /></div>}
       </div>
     </div>
   );
 }
+
 
 
 // ── Nickname Editor ───────────────────────────────────────────────────────────
@@ -282,148 +239,109 @@ export default function Profile() {
       <div className="min-h-screen flex items-center justify-center px-6 text-center">
         <div>
           <div className="text-5xl mb-4">👤</div>
-          <p className="text-muted-foreground">Откройте через Telegram</p>
+          <p className="text-muted-foreground font-bold">Откройте через Telegram</p>
         </div>
       </div>
     );
   }
 
-  const avatarLetter = (user.first_name || user.username || 'U')[0].toUpperCase();
   const isPremium = user.subscription_tier === 'premium';
+  const avatarLetter = (user.first_name || user.username || 'U')[0].toUpperCase();
+  const accentColor = user.accent_color || '#DC2650';
 
   return (
-    <div className="min-h-screen pb-24 animate-fade-in">
-      {/* ── Profile Header ── */}
-      <div className="relative">
-        {/* BG gradient */}
-        <div
-          className="h-36"
-          style={{ background: isPremium 
-            ? 'linear-gradient(135deg, hsl(45,90%,20%), hsl(30,80%,18%))' 
-            : 'linear-gradient(135deg, hsl(346,80%,20%), hsl(270,55%,20%))' 
-          }}
-        />
-        <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent" />
-      </div>
+    <div className="min-h-screen pb-24 animate-fade-in relative overflow-hidden">
+      
+      {/* ── Background Glow ── */}
+      <div className="fixed top-0 left-0 right-0 h-96 opacity-10 blur-[120px] pointer-events-none z-0" 
+           style={{ backgroundColor: accentColor }} />
 
-      <div className="px-4 -mt-16 relative z-10">
-        {/* Avatar & Info */}
-        <div className="flex items-center gap-5 mb-8">
-          <div className="relative">
-            {user.photo_url ? (
-                <img
-                src={user.photo_url}
-                alt="avatar"
-                className="w-24 h-24 rounded-[32px] border-4 border-background object-cover shadow-2xl z-10 relative"
-                />
-            ) : (
-                <div
-                className="w-24 h-24 rounded-[32px] border-4 border-background flex items-center justify-center text-4xl font-black text-white shadow-2xl z-10 relative"
-                style={{ background: isPremium
-                  ? 'linear-gradient(135deg, hsl(45,90%,45%), hsl(30,80%,40%))'
-                  : 'linear-gradient(135deg, hsl(346,80%,45%), hsl(270,55%,40%))'
-                }}
-                >
-                {avatarLetter}
-                </div>
-            )}
-            {/* Status Indicator */}
-            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-background rounded-full flex items-center justify-center z-20 shadow-lg">
-                {isPremium ? (
-                  <Gem className="w-5 h-5 text-yellow-400" />
+      {/* ── Profile Header ── */}
+      <div className="relative pt-12 px-6">
+        
+        {/* Top Actions */}
+        <div className="flex justify-end gap-3 mb-6 relative z-10">
+            <button 
+                onClick={() => navigate('/store')}
+                className="h-10 px-4 glass rounded-xl flex items-center gap-2 text-xs font-black uppercase tracking-widest border border-yellow-500/20 active:scale-95 transition-all text-yellow-400"
+            >
+                <ShoppingBag className="w-4 h-4" />
+                Магазин
+            </button>
+        </div>
+
+        {/* User Card */}
+        <div className="relative z-10 flex flex-col items-center text-center">
+            <div className="relative mb-4">
+                {user.photo_url ? (
+                    <img
+                    src={user.photo_url}
+                    alt="avatar"
+                    className="w-28 h-28 rounded-[40px] border-4 border-background object-cover shadow-2xl"
+                    />
                 ) : (
-                  <div className="w-5 h-5 bg-green-500 rounded-full border-4 border-background animate-pulse" />
+                    <div
+                    className="w-28 h-28 rounded-[40px] border-4 border-background flex items-center justify-center text-4xl font-black text-white shadow-2xl"
+                    style={{ backgroundColor: accentColor }}
+                    >
+                    {avatarLetter}
+                    </div>
+                )}
+                {isPremium && (
+                    <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-yellow-400 rounded-2xl flex items-center justify-center border-4 border-background shadow-lg rotate-12">
+                        <Gem className="w-5 h-5 text-black" />
+                    </div>
                 )}
             </div>
-          </div>
 
-          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-                <h1 className="text-2xl font-black leading-tight truncate gradient-text">
-                {user.nickname || user.first_name || user.username || 'Пользователь'}
+                <h1 className="text-3xl font-black tracking-tighter" style={{ color: accentColor }}>
+                    {user.nickname || user.first_name || 'Пользователь'}
                 </h1>
-                {user.is_admin && <span className="bg-primary/20 text-primary text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter border border-primary/30">Admin</span>}
-                {isPremium && <span className="bg-yellow-500/20 text-yellow-400 text-[8px] font-black px-1.5 py-0.5 rounded-md uppercase tracking-tighter border border-yellow-500/30">PRO</span>}
+                {isPremium && <Sparkles className="w-5 h-5 text-yellow-400 animate-pulse" />}
             </div>
-            <div className="flex flex-col gap-1">
-               {user.username && (
-                 <p className="text-muted-foreground text-xs font-bold uppercase tracking-wider opacity-60">
-                    @{user.username}
-                 </p>
-               )}
-               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-white/5 border border-white/5 rounded-full w-fit">
-                  <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${isPremium ? 'bg-yellow-400' : 'bg-primary'}`} />
-                  <span className={`text-[10px] font-black uppercase tracking-widest ${isPremium ? 'text-yellow-400/80' : 'text-primary/80'}`}>
-                    {isPremium ? 'Premium Member' : 'Basic Member'}
-                  </span>
-               </div>
+            
+            <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest opacity-40 mb-4">
+                @{user.username || 'user'} · {isPremium ? 'Premium' : 'Basic'}
+            </p>
+
+            <div className="flex gap-2 w-full max-w-[280px]">
+                <button 
+                    onClick={() => WebApp.showPopup({ title: 'Редактор профиля', message: 'Нажмите на никнейм или блок "О себе" для редактирования.' })}
+                    className="flex-1 h-11 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-widest"
+                >
+                    Изменить профиль
+                </button>
             </div>
-          </div>
         </div>
 
-        {/* Action Bar — now just the nickname editor */}
-        <div className="flex gap-2 mb-8">
-          <NicknameEditor 
+        {/* Bio Section */}
+        <BioEditor 
             tgId={user.tg_id} 
-            currentNickname={user.nickname || ''} 
-            onSave={(nick) => setUser({ ...user, nickname: nick })} 
-          />
+            currentBio={user.bio || ''} 
+            onSave={(b) => setUser({ ...user, bio: b })} 
+        />
+
+        {/* Profile Color Selection */}
+        <ColorPicker 
+            tgId={user.tg_id} 
+            currentColor={accentColor} 
+            onSave={(c) => setUser({ ...user, accent_color: c })} 
+            isPremium={isPremium} 
+        />
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-3 gap-3 mt-10">
+            <StatCard icon={<BookOpen className="w-4 h-4" />} value={myStories.length} label="Сюжета" color={accentColor} />
+            <StatCard icon={<Heart className="w-4 h-4" />} value={likedStories.length} label="Лайков" color="#EF4444" />
+            <StatCard icon={<TrendingUp className="w-4 h-4" />} value={user.total_earned_stars || 0} label="Доход ⭐" color="#10B981" />
         </div>
-
-        {/* Stats cards */}
-        <div className="grid grid-cols-4 gap-2 mb-6">
-          <div className="glass rounded-xl p-3 text-center">
-            <BookOpen className="w-4 h-4 mx-auto text-primary mb-1" />
-            <p className="text-xl font-black">{myStories.length}</p>
-            <p className="text-[10px] text-muted-foreground">Сюжета</p>
-          </div>
-          <div className="glass rounded-xl p-3 text-center">
-            <Heart className="w-4 h-4 mx-auto text-red-400 mb-1" />
-            <p className="text-xl font-black">{likedStories.length}</p>
-            <p className="text-[10px] text-muted-foreground">Лайков</p>
-          </div>
-          <div className="glass rounded-xl p-3 text-center">
-            <Star className="w-4 h-4 mx-auto text-yellow-400 fill-yellow-400 mb-1" />
-            <p className="text-xl font-black">{user.stars_balance}</p>
-            <p className="text-[10px] text-muted-foreground">Баланс</p>
-          </div>
-          <div className="glass rounded-xl p-3 text-center">
-            <TrendingUp className="w-4 h-4 mx-auto text-green-400 mb-1" />
-            <p className="text-xl font-black">{user.total_earned_stars || 0}</p>
-            <p className="text-[10px] text-muted-foreground">Доход</p>
-          </div>
-        </div>
-
-        {/* Earnings info bar */}
-        {(user.total_earned_stars || 0) > 0 && (
-          <div className="glass rounded-2xl p-4 mb-6 border border-white/5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-green-400" />
-                </div>
-                <div>
-                  <p className="text-xs font-black uppercase tracking-wider">Заработок</p>
-                  <p className="text-[10px] text-muted-foreground">
-                    Комиссия: {isPremium ? '10%' : '15%'} · {isPremium ? 'Premium' : 'Сниженная с Premium'}
-                  </p>
-                </div>
-              </div>
-              <div className="text-right">
-                <p className="text-lg font-black text-green-400">{user.total_earned_stars} ⭐</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Subscription Section */}
-        <SubscriptionSection user={user} onUpgrade={(newUser) => setUser(newUser)} />
 
         {/* Admin panel link */}
         {user.is_admin && (
           <button
             onClick={() => navigate('/admin')}
-            className="w-full mb-4 p-3.5 rounded-xl border border-destructive/50 bg-destructive/10 text-destructive font-semibold text-sm flex items-center justify-between"
+            className="w-full mt-8 p-4 rounded-2xl border border-destructive/20 bg-destructive/5 text-destructive font-bold text-xs flex items-center justify-between active:scale-[0.98] transition-all"
           >
             <span>🛡️ Панель администратора</span>
             <ChevronRight className="w-4 h-4" />
@@ -431,90 +349,80 @@ export default function Profile() {
         )}
 
         {/* Tabs */}
-        <div className="flex border-b border-border mb-4">
+        <div className="flex gap-4 mt-12 mb-6 border-b border-white/5">
           <button
             onClick={() => setTab('my')}
-            className={`flex-1 pb-3 text-sm font-semibold transition-colors ${
-              tab === 'my' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
+            className={`pb-3 text-xs font-black uppercase tracking-widest transition-all relative ${
+              tab === 'my' ? 'text-white' : 'text-muted-foreground'
             }`}
           >
             Мои сюжеты
+            {tab === 'my' && <div className="absolute bottom-0 left-0 right-0 h-0.5" style={{ backgroundColor: accentColor }} />}
           </button>
           <button
             onClick={() => setTab('liked')}
-            className={`flex-1 pb-3 text-sm font-semibold transition-colors ${
-              tab === 'liked' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground'
+            className={`pb-3 text-xs font-black uppercase tracking-widest transition-all relative ${
+              tab === 'liked' ? 'text-white' : 'text-muted-foreground'
             }`}
           >
             Любимое
+            {tab === 'liked' && <div className="absolute bottom-0 left-0 right-0 h-0.5 shadow-[0_0_10px_rgba(239,68,68,0.5)] bg-red-500" />}
           </button>
         </div>
 
-        {/* Story list */}
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="skeleton h-20 rounded-xl" />
-            ))}
-          </div>
-        ) : displayStories.length === 0 ? (
-          <div className="flex flex-col items-center py-14 text-center">
-            <div className="text-5xl mb-3">{tab === 'my' ? '📝' : '💔'}</div>
-            <p className="text-muted-foreground font-medium">
-              {tab === 'my' ? 'Нет загруженных сюжетов' : 'Нет понравившихся сюжетов'}
-            </p>
-            {tab === 'my' && (
-              <button
-                onClick={() => navigate('/upload')}
-                className="mt-4 px-5 py-2 rounded-xl font-semibold text-sm text-white"
-                style={{ background: 'linear-gradient(135deg, hsl(346,80%,50%), hsl(270,55%,48%))' }}
-              >
-                Загрузить сюжет
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {displayStories.map((story) => {
-              const sc = STATUS_CONFIG[story.status];
-              return (
-                <div
-                  key={story.id}
-                  onClick={() => navigate(`/story/${story.id}`)}
-                  className="flex gap-3 bg-card border border-border rounded-xl p-3 cursor-pointer active:scale-[0.98] transition-transform"
-                >
-                  <img
-                    src={story.preview_url}
-                    alt={story.title}
-                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm truncate">{story.title}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">{HARDNESS_LABEL[story.hardness_level]}</p>
-                    <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                      {tab === 'my' && (
-                        <span className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-semibold ${sc.cls}`}>
-                          {sc.icon}
-                          {sc.label}
-                        </span>
-                      )}
-                      {story.reject_reason && (
-                        <span className="text-[10px] text-muted-foreground truncate">
-                          {story.reject_reason.slice(0, 40)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center">
-                    <Heart className="w-3.5 h-3.5 text-red-400 fill-red-400" />
-                    <span className="text-xs ml-1 text-muted-foreground">{story.likes_count}</span>
-                  </div>
+        {/* List Content */}
+        <div className="pb-10">
+            {loading ? (
+                <div className="space-y-4">
+                    {[1, 2, 3].map(i => <div key={i} className="h-24 rounded-2xl bg-white/5 animate-pulse" />)}
                 </div>
-              );
-            })}
-          </div>
-        )}
+            ) : displayStories.length === 0 ? (
+                <div className="py-20 text-center opacity-40">
+                    <p className="text-sm font-bold">{tab === 'my' ? 'У вас пока нет сюжетов' : 'Вы еще ничего не лайкнули'}</p>
+                </div>
+            ) : (
+                <div className="space-y-4">
+                    {displayStories.map(story => {
+                        const sc = STATUS_CONFIG[story.status];
+                        return (
+                            <div
+                                key={story.id}
+                                onClick={() => navigate(`/story/${story.id}`)}
+                                className="bg-white/5 border border-white/5 rounded-2xl p-4 flex gap-4 active:scale-[0.98] transition-all"
+                            >
+                                <img src={story.preview_url} className="w-16 h-16 rounded-xl object-cover" alt="" />
+                                <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                    <h4 className="font-bold text-sm truncate mb-1">{story.title}</h4>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[10px] uppercase font-black opacity-40">{HARDNESS_LABEL[story.hardness_level]}</span>
+                                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest ${sc.cls}`}>
+                                            {sc.label}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center">
+                                    <ChevronRight className="w-4 h-4 opacity-20" />
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
       </div>
     </div>
   );
 }
+
+function StatCard({ icon, value, label, color }: { icon: any, value: number, label: string, color: string }) {
+  return (
+    <div className="glass rounded-3xl p-4 border border-white/5 flex flex-col items-center text-center">
+        <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-3" style={{ backgroundColor: `${color}20` }}>
+            <div style={{ color }}>{icon}</div>
+        </div>
+        <p className="text-xl font-black mb-1">{value}</p>
+        <p className="text-[8px] font-black uppercase tracking-widest opacity-40">{label}</p>
+    </div>
+  );
+}
+

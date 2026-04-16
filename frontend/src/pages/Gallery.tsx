@@ -5,8 +5,7 @@ import { Story, SortFilter } from '../types';
 import StoryCard from '../components/StoryCard';
 import SkeletonCard from '../components/SkeletonCard';
 import { useAppStore } from '../store';
-import TickerBanner from '../components/TickerBanner';
-import Randomizer from '../components/Randomizer';
+
 
 const FILTERS: { key: SortFilter; label: string; icon: React.ReactNode }[] = [
   { key: 'new',      label: 'Новые',    icon: <Flame className="w-3.5 h-3.5" /> },
@@ -127,14 +126,8 @@ export default function Gallery() {
                 <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mt-0.5 opacity-60">Premium Edition</p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="glass rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 border border-white/5">
-                <Star className="w-3.5 h-3.5 text-yellow-500 fill-yellow-500" />
-                <span className="text-xs font-black">{user?.stars_balance || 0}</span>
-            </div>
-          </div>
         </div>
+
 
         {/* Search */}
         <div className="relative">
@@ -171,8 +164,6 @@ export default function Gallery() {
         </div>
       </div>
 
-      {/* Community Ticker */}
-      {!isSearchMode && <TickerBanner />}
 
       {/* ── Featured Rows (hidden during search) ── */}
       {!isSearchMode && (
@@ -229,7 +220,7 @@ export default function Gallery() {
         )}
       </div>
 
-      <Randomizer />
     </div>
   );
 }
+

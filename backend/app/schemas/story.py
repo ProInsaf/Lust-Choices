@@ -68,10 +68,17 @@ class UserOut(BaseModel):
     total_spent_stars: int = 0
     total_earned_stars: int = 0
     total_seconds_spent: int = 0
+    
+    # Customization
+    bio: Optional[str] = None
+    accent_color: str = "#DC2650"
+    
     subscription_tier: str = "basic"
     subscription_expires_at: Optional[datetime] = None
     stories_created_this_month: int = 0
+    last_limit_reset_at: Optional[datetime] = None
     created_at: datetime
+
     last_active: Optional[datetime] = None
 
     class Config:
@@ -88,6 +95,13 @@ class UserUpsert(BaseModel):
 
 class NicknameUpdate(BaseModel):
     nickname: str
+
+
+class UserUpdate(BaseModel):
+    nickname: Optional[str] = None
+    bio: Optional[str] = None
+    accent_color: Optional[str] = None
+
 
 
 class AdminAction(BaseModel):

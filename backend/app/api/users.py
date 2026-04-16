@@ -3,8 +3,33 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 from app.core.database import get_db
 from app.models.story import User
-from app.schemas.story import UserOut, UserUpsert, NicknameUpdate, ActivitySync
 from app.models.story import User, Story
+from app.schemas.story import UserOut, UserUpsert, NicknameUpdate, ActivitySync, UserUpdate
+
+
+@router.patch("/{tg_id}", response_model=UserOut)
+def update_user_profile(tg_id: int, data: UserUpdate, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.tg_id == tg_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if data.nickname is not None:
+        # Check if nickname already taken
+        existing = db.query(User).filter(User.nickname == data.nickname, User.tg_id != tg_id).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Этот никнейм уже занят")
+        user.nickname = data.nickname
+    
+    if data.bio is not None:
+        user.bio = data.bio
+        
+    if data.accent_color is not None:
+        user.accent_color = data.accent_color
+        
+    db.commit()
+    db.refresh(user)
+    return user
+
 
 router = APIRouter(prefix="/users", tags=["Users"])
 

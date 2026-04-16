@@ -6,9 +6,11 @@ import StoryDetail from './pages/StoryDetail';
 import Upload from './pages/Upload';
 import Profile from './pages/Profile';
 import Admin from './pages/Admin';
+import Store from './pages/Store';
 import { useAppStore } from './store';
 import { upsertUser, trackEvent } from './api';
-import { Home, PlusCircle, User } from 'lucide-react';
+import { Home, PlusCircle, User, ShoppingBag } from 'lucide-react';
+
 
 import Onboarding from './components/Onboarding';
 
@@ -39,12 +41,14 @@ function BottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card/80 backdrop-blur-2xl border-t border-white/5 pb-safe rounded-t-[32px] shadow-[0_-8px_30px_rgba(0,0,0,0.5)]">
-      <div className="flex justify-around items-center px-6 py-4">
-        <NavItem to="/"        icon={<Home size={22} />}       label="Галерея" />
-        <NavItem to="/upload"  icon={<PlusCircle size={22} />} label="Создать" />
-        <NavItem to="/profile" icon={<User size={22} />}       label="Профиль" />
+      <div className="flex justify-around items-center px-4 py-4">
+        <NavItem to="/"        icon={<Home size={20} />}       label="Галерея" />
+        <NavItem to="/upload"  icon={<PlusCircle size={20} />} label="Создать" />
+        <NavItem to="/store"   icon={<ShoppingBag size={20} />} label="Магазин" />
+        <NavItem to="/profile" icon={<User size={20} />}       label="Профиль" />
       </div>
     </nav>
+
   );
 }
 
@@ -88,11 +92,15 @@ function AppContent() {
             total_spent_stars: 0,
             total_earned_stars: 0,
             total_seconds_spent: 0,
+            bio: '',
+            accent_color: '#DC2650',
             subscription_tier: 'basic',
             subscription_expires_at: null,
             stories_created_this_month: 0,
+            last_limit_reset_at: null,
             created_at: new Date().toISOString(),
             last_active: new Date().toISOString(),
+
           });
         });
     }
@@ -118,7 +126,9 @@ function AppContent() {
           <Route path="/story/:id"  element={<StoryDetail />} />
           <Route path="/upload"     element={<Upload />}      />
           <Route path="/profile"    element={<Profile />}     />
+          <Route path="/store"      element={<Store />}       />
           <Route path="/admin"      element={<Admin />}       />
+
         </Routes>
       </main>
       <BottomNav />

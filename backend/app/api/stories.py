@@ -98,6 +98,27 @@ async def create_story(
 ):
     story_id = str(uuid.uuid4())
 
+    # Limit Check for Basic users
+    user = db.query(User).filter(User.tg_id == author_tg_id).first()
+    if user:
+        from app.models.story import SubscriptionTier
+        # Monthly reset check
+        now = datetime.utcnow()
+        if not user.last_limit_reset_at or (now - user.last_limit_reset_at).days >= 30:
+            user.stories_created_this_month = 0
+            user.last_limit_reset_at = now
+        
+        # Enforce limit for Basic
+        if user.subscription_tier == SubscriptionTier.basic:
+            if user.stories_created_this_month >= 3:
+                raise HTTPException(
+                    status_code=403, 
+                    detail="Вы достигли лимита создания сюжетов (3/мес) для Basic. Оформите Premium для безлимитного доступа! ✨"
+                )
+        
+        user.stories_created_this_month += 1
+
+
     # Upload primary preview image
     preview_bytes = await preview_file.read()
     ext = preview_file.filename.rsplit(".", 1)[-1].lower() if "." in preview_file.filename else "jpg"

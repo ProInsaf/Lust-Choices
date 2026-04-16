@@ -59,9 +59,15 @@ export interface UserProfile {
   total_spent_stars: number;
   total_earned_stars: number;
   total_seconds_spent: number;
+  
+  bio?: string;
+  accent_color: string;
+  
   subscription_tier: SubscriptionTier;
   subscription_expires_at: string | null;
   stories_created_this_month: number;
+  last_limit_reset_at?: string;
   created_at: string;
   last_active: string;
 }
+

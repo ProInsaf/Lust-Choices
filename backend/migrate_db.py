@@ -64,7 +64,11 @@ def migrate():
             ("subscription_tier", "subscriptiontier DEFAULT 'basic'"),
             ("subscription_expires_at", "TIMESTAMP"),
             ("stories_created_this_month", "INTEGER DEFAULT 0"),
+            ("bio", "TEXT"),
+            ("accent_color", "VARCHAR(20) DEFAULT '#DC2650'"),
+            ("last_limit_reset_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP"),
         ]
+
         
         for col_name, col_type in user_columns_to_add:
             try:

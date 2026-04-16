@@ -234,3 +234,9 @@ export const verifyPremium = async (tgId: number, chargeId: string) => {
   return data as UserProfile;
 };
 
+export const updateUserProfile = async (tgId: number, updates: { nickname?: string; bio?: string; accent_color?: string }) => {
+  const { data } = await api.patch(`/users/${tgId}`, updates);
+  return data as UserProfile;
+};
+
+

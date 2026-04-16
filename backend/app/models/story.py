@@ -90,8 +90,16 @@ class User(Base):
     total_spent_stars = Column(Integer, default=0)
     total_earned_stars = Column(Integer, default=0)  # Stars earned from story sales
     total_seconds_spent = Column(BigInteger, default=0) # Engagement metric
+    
+    # Customization & Settings
+    bio = Column(Text, nullable=True)
+    accent_color = Column(String(20), default="#DC2650") # Default primary color
+    
     subscription_tier = Column(Enum(SubscriptionTier), default=SubscriptionTier.basic)
     subscription_expires_at = Column(DateTime, nullable=True)
     stories_created_this_month = Column(Integer, default=0)
+    last_limit_reset_at = Column(DateTime, default=datetime.utcnow)
+    
     created_at = Column(DateTime, default=datetime.utcnow)
+
     last_active = Column(DateTime, default=datetime.utcnow)
