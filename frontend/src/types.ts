@@ -29,7 +29,9 @@ export interface Story {
   author_username: string | null;
   author_nickname: string | null;
   author_first_name: string | null;
+  author_is_premium: boolean;
   preview_url: string;
+
   preview_urls: string[];
   json_url: string;
   tags: string[];
@@ -59,15 +61,17 @@ export interface UserProfile {
   total_spent_stars: number;
   total_earned_stars: number;
   total_seconds_spent: number;
-  
-  bio?: string;
-  accent_color: string;
+  // Customization
+  profile_theme: string;
   
   subscription_tier: SubscriptionTier;
+
   subscription_expires_at: string | null;
   stories_created_this_month: number;
   last_limit_reset_at?: string;
+  last_nickname_updated_at?: string;
   created_at: string;
+
   last_active: string;
 }
 

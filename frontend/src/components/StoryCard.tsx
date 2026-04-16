@@ -1,6 +1,6 @@
 import React from 'react';
 import { Story, HARDNESS_LABEL, HARDNESS_CLASS } from '../types';
-import { Heart, Star, Film } from 'lucide-react';
+import { Heart, Star, Film, Crown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 interface Props {
@@ -72,8 +72,9 @@ export default function StoryCard({ story, style }: Props) {
       {/* Info */}
       <div className="p-3">
         <h3 className="font-semibold text-sm leading-tight truncate">{story.title}</h3>
-        <p className="text-xs text-muted-foreground mt-1 truncate">
-          @{story.author_username || story.author_first_name || 'anonymous'}
+        <p className={`text-xs mt-1 truncate flex items-center gap-1 ${story.author_is_premium ? 'text-yellow-400 font-bold tracking-tight shadow-yellow-400/50 drop-shadow-md' : 'text-muted-foreground'}`}>
+          {story.author_is_premium && <Crown className="w-3 h-3 text-yellow-400" />}
+          {story.author_nickname || story.author_username || story.author_first_name || 'anonymous'}
         </p>
 
         {/* Tags */}

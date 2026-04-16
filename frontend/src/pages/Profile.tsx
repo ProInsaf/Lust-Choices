@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../store';
-import { fetchUserStories, fetchLikedStories, updateUserProfile } from '../api';
+import { fetchUserStories, fetchLikedStories } from '../api';
 
 import { Story, HARDNESS_LABEL } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Heart, ChevronRight, Clock, CheckCircle, XCircle, Edit3, Crown, Sparkles, Gem, Palette, ShoppingBag, TrendingUp } from 'lucide-react';
-
-import WebApp from '@twa-dev/sdk';
-
+import { BookOpen, Heart, ChevronRight, Clock, CheckCircle, XCircle, Sparkles, Gem, Settings, TrendingUp } from 'lucide-react';
+import ProfileSettingsModal, { THEMES } from '../components/ProfileSettingsModal';
 
 const STATUS_CONFIG = {
   pending:  { label: 'На проверке', icon: <Clock className="w-3.5 h-3.5" />, cls: 'text-yellow-400 bg-yellow-900/30 border-yellow-500/30' },
@@ -15,123 +13,19 @@ const STATUS_CONFIG = {
   rejected: { label: 'Отклонено',   icon: <XCircle className="w-3.5 h-3.5" />,    cls: 'text-red-400 bg-red-900/30 border-red-500/30' },
 };
 
-// ── Profile Editors ───────────────────────────────────────────────────────────
-
-function BioEditor({ tgId, currentBio, onSave }: { tgId: number; currentBio: string; onSave: (bio: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(currentBio);
-  const [loading, setLoading] = useState(false);
-
-  const handleSave = async () => {
-    setLoading(true);
-    try {
-      const res = await updateUserProfile(tgId, { bio: value });
-      onSave(res.bio || '');
-      setEditing(false);
-      WebApp.HapticFeedback.notificationOccurred('success');
-    } catch (e) {
-      WebApp.HapticFeedback.notificationOccurred('error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!editing) {
-    return (
-      <div 
-        onClick={() => setEditing(true)}
-        className="mt-4 p-4 rounded-2xl bg-white/5 border border-white/5 cursor-pointer hover:bg-white/[0.08] transition-all group"
-      >
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">О себе</p>
-          <Edit3 className="w-3 h-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
-        <p className="text-xs leading-relaxed italic opacity-80">
-          {currentBio || 'Расскажите о себе (жанры, которые вы любите, или ваши предпочтения)...'}
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mt-4 p-4 rounded-2xl bg-white/5 border border-primary/20 animate-fade-in shadow-xl shadow-primary/10">
-      <textarea
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder="О себе..."
-        className="w-full h-24 bg-transparent text-sm focus:outline-none resize-none placeholder:text-muted-foreground/30"
-        maxLength={200}
-        autoFocus
-      />
-      <div className="flex justify-end gap-2 mt-2">
-        <button onClick={() => setEditing(false)} className="px-4 py-2 rounded-xl text-xs font-bold text-muted-foreground">Отмена</button>
-        <button 
-          onClick={handleSave} 
-          disabled={loading}
-          className="px-6 py-2 rounded-xl text-xs font-black uppercase tracking-widest bg-primary text-white disabled:opacity-50"
-        >
-          {loading ? '...' : 'Сохранить'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ColorPicker({ tgId, currentColor, onSave, isPremium }: { tgId: number; currentColor: string; onSave: (color: string) => void; isPremium: boolean }) {
-  const COLORS = ['#DC2650', '#7C3AED', '#2563EB', '#059669', '#D97706', '#DB2777', '#4B5563'];
-  const [loading, setLoading] = useState(false);
-
-  const handleSelect = async (color: string) => {
-    if (!isPremium) {
-      WebApp.showPopup({ 
-        title: '💎 Premium функция', 
-        message: 'Смена цвета профиля доступна только пользователям с Premium подпиской.' 
-      });
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await updateUserProfile(tgId, { accent_color: color });
-      onSave(res.accent_color);
-      WebApp.HapticFeedback.selectionChanged();
-    } catch (e) {
-      WebApp.HapticFeedback.notificationOccurred('error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="mt-6">
-      <div className="flex items-center gap-2 mb-3">
-        <Palette className="w-3.5 h-3.5 text-muted-foreground" />
-        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Цвет профиля</p>
-      </div>
-      <div className="flex gap-2.5 overflow-x-auto no-scrollbar py-1">
-        {COLORS.map(c => (
-          <button
-            key={c}
-            onClick={() => handleSelect(c)}
-            disabled={loading}
-            className={`w-8 h-8 rounded-full border-2 transition-all active:scale-95 flex-shrink-0 ${currentColor === c ? 'border-white scale-110 shadow-lg' : 'border-transparent shadow-md opacity-70'}`}
-            style={{ backgroundColor: c }}
-          />
-        ))}
-        {!isPremium && <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 border border-dashed border-white/20 flex items-center justify-center"><Crown className="w-4 h-4 text-muted-foreground/30" /></div>}
-      </div>
-    </div>
-  );
-}
 
 // ── Main Profile ──────────────────────────────────────────────────────────────
 export default function Profile() {
-  const { user, setUser } = useAppStore();
+  const { user } = useAppStore();
   const navigate = useNavigate();
+
 
   const [tab, setTab] = useState<'my' | 'liked'>('my');
   const [myStories, setMyStories] = useState<Story[]>([]);
   const [likedStories, setLikedStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
 
   useEffect(() => {
     if (!user) return;
@@ -159,10 +53,12 @@ export default function Profile() {
 
   const isPremium = user.subscription_tier === 'premium';
   const avatarLetter = (user.first_name || user.username || 'U')[0].toUpperCase();
-  const accentColor = user.accent_color || '#DC2650';
+  
+  const theme = THEMES.find(t => t.id === user.profile_theme) || THEMES[0];
+  const accentColor = theme.colors.primary;
 
   return (
-    <div className="min-h-screen pb-24 animate-fade-in relative overflow-hidden">
+    <div className={`min-h-screen pb-24 animate-fade-in relative overflow-hidden transition-colors ${theme.colors.bgStyle}`}>
       
       {/* ── Background Glow ── */}
       <div className="fixed top-0 left-0 right-0 h-96 opacity-10 blur-[120px] pointer-events-none z-0" 
@@ -172,15 +68,15 @@ export default function Profile() {
       <div className="relative pt-12 px-6">
         
         {/* Top Actions */}
-        <div className="flex justify-end gap-3 mb-6 relative z-10">
+        <div className="flex justify-end mb-6 relative z-10">
             <button 
-                onClick={() => navigate('/store')}
-                className="h-10 px-4 glass rounded-xl flex items-center gap-2 text-xs font-black uppercase tracking-widest border border-yellow-500/20 active:scale-95 transition-all text-yellow-400"
+                onClick={() => setIsSettingsOpen(true)}
+                className={`w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition-all bg-black/40 ${theme.colors.borderStyle} border`}
             >
-                <ShoppingBag className="w-4 h-4" />
-                Магазин
+                <Settings className="w-5 h-5 text-white/80" />
             </button>
         </div>
+
 
         {/* User Card */}
         <div className="relative z-10 flex flex-col items-center text-center">
@@ -219,28 +115,14 @@ export default function Profile() {
 
             <div className="flex gap-2 w-full max-w-[280px]">
                 <button 
-                    onClick={() => WebApp.showPopup({ title: 'Редактор профиля', message: 'Нажмите на никнейм или блок "О себе" для редактирования.' })}
-                    className="flex-1 h-11 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-widest"
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="flex-1 h-11 rounded-xl bg-white/5 border border-white/5 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
                 >
                     Изменить профиль
                 </button>
             </div>
         </div>
 
-        {/* Bio Section */}
-        <BioEditor 
-            tgId={user.tg_id} 
-            currentBio={user.bio || ''} 
-            onSave={(b) => setUser({ ...user, bio: b })} 
-        />
-
-        {/* Profile Color Selection */}
-        <ColorPicker 
-            tgId={user.tg_id} 
-            currentColor={accentColor} 
-            onSave={(c) => setUser({ ...user, accent_color: c })} 
-            isPremium={isPremium} 
-        />
 
         {/* Stats Grid */}
         <div className="grid grid-cols-3 gap-3 mt-10">
@@ -322,9 +204,12 @@ export default function Profile() {
             )}
         </div>
       </div>
+      
+      <ProfileSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }
+
 
 function StatCard({ icon, value, label, color }: { icon: any, value: number, label: string, color: string }) {
   return (

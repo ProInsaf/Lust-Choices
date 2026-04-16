@@ -6,13 +6,28 @@ from sqlalchemy import desc, func
 from typing import Optional, List
 from app.core.database import get_db
 from app.core.storage import upload_file, delete_file, PREVIEW_BUCKET, JSON_BUCKET
-from app.models.story import Story, StoryStatus, Like, Purchase, User
+from app.models.story import Story, StoryStatus, Like, Purchase, User, SubscriptionTier
 from app.schemas.story import StoryOut, PaymentVerify
 from app.core.recommendation import get_recommended_stories_for_user, update_user_tag_scores
 
 router = APIRouter(prefix="/stories", tags=["Stories"])
 
 HARDNESS_LABEL = {1: "Soft", 2: "Medium", 3: "Hard", 4: "Extreme"}
+
+def attach_premium_flag(db: Session, stories):
+    if not stories: return stories
+    is_single = not isinstance(stories, list)
+    s_list = [stories] if is_single else stories
+    author_ids = list({s.author_tg_id for s in s_list})
+    premium_users = db.query(User.tg_id).filter(
+        User.tg_id.in_(author_ids),
+        User.subscription_tier == SubscriptionTier.premium
+    ).all()
+    premium_ids = {u.tg_id for u in premium_users}
+    for s in s_list:
+        setattr(s, "author_is_premium", s.author_tg_id in premium_ids)
+    return stories if is_single else s_list
+
 
 
 # ─── LIST / SEARCH ────────────────────────────────────────────────────────────
@@ -28,7 +43,9 @@ def get_stories(
     db: Session = Depends(get_db),
 ):
     if sort == "recommended" and user_tg_id is not None:
-        return get_recommended_stories_for_user(db, user_tg_id, limit)
+        recs = get_recommended_stories_for_user(db, user_tg_id, limit)
+        return attach_premium_flag(db, recs)
+
 
     q = db.query(Story).filter(Story.status == StoryStatus.approved)
 
@@ -60,7 +77,9 @@ def get_stories(
             )
         )
 
-    return q.offset(skip).limit(limit).all()
+    res = q.offset(skip).limit(limit).all()
+    return attach_premium_flag(db, res)
+
 
 
 @router.get("/{story_id}", response_model=StoryOut)
@@ -68,14 +87,17 @@ def get_story(story_id: str, db: Session = Depends(get_db)):
     story = db.query(Story).filter(Story.id == story_id).first()
     if not story:
         raise HTTPException(status_code=404, detail="Story not found")
-    return story
+    return attach_premium_flag(db, story)
+
 
 
 # ─── USER'S OWN STORIES ───────────────────────────────────────────────────────
 
 @router.get("/user/{tg_id}", response_model=List[StoryOut])
 def get_user_stories(tg_id: int, db: Session = Depends(get_db)):
-    return db.query(Story).filter(Story.author_tg_id == tg_id).order_by(desc(Story.created_at)).all()
+    res = db.query(Story).filter(Story.author_tg_id == tg_id).order_by(desc(Story.created_at)).all()
+    return attach_premium_flag(db, res)
+
 
 
 # ─── UPLOAD ───────────────────────────────────────────────────────────────────
@@ -172,7 +194,8 @@ async def create_story(
     db.add(story)
     db.commit()
     db.refresh(story)
-    return story
+    return attach_premium_flag(db, story)
+
 
 
 # ─── LIKE / UNLIKE ────────────────────────────────────────────────────────────
@@ -303,4 +326,6 @@ def get_liked_stories(tg_id: int, db: Session = Depends(get_db)):
     story_ids = [l.story_id for l in likes]
     if not story_ids:
         return []
-    return db.query(Story).filter(Story.id.in_(story_ids)).all()
+    res = db.query(Story).filter(Story.id.in_(story_ids)).all()
+    return attach_premium_flag(db, res)
+

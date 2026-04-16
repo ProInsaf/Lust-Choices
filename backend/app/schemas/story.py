@@ -28,6 +28,8 @@ class StoryOut(StoryBase):
     author_username: Optional[str] = None
     author_nickname: Optional[str] = None
     author_first_name: Optional[str] = None
+    author_is_premium: bool = False
+
     preview_url: str
     preview_urls: Optional[List[str]] = []
     json_url: str
@@ -70,8 +72,9 @@ class UserOut(BaseModel):
     total_seconds_spent: int = 0
     
     # Customization
-    bio: Optional[str] = None
-    accent_color: str = "#DC2650"
+    profile_theme: str = "default"
+    last_nickname_updated_at: Optional[datetime] = None
+
     
     subscription_tier: str = "basic"
     subscription_expires_at: Optional[datetime] = None
@@ -99,9 +102,9 @@ class NicknameUpdate(BaseModel):
 
 class UserUpdate(BaseModel):
     nickname: Optional[str] = None
-    bio: Optional[str] = None
-    accent_color: Optional[str] = None
+    profile_theme: Optional[str] = None
     subscription_tier: Optional[str] = None
+
 
 
 

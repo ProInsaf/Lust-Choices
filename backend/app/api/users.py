@@ -9,29 +9,36 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 
 
+from datetime import datetime, timedelta
+
 @router.patch("/{tg_id}", response_model=UserOut)
 def update_user_profile(tg_id: int, data: UserUpdate, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.tg_id == tg_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    if data.nickname is not None:
+    if data.nickname is not None and user.nickname != data.nickname:
+        # Check cooldown if not admin
+        if not user.is_admin and user.last_nickname_updated_at:
+            delta = datetime.utcnow() - user.last_nickname_updated_at
+            if delta.days < 30:
+                days_left = 30 - delta.days
+                raise HTTPException(status_code=400, detail=f"Никнейм можно менять раз в 30 дней. Осталось: {days_left}")
+                
         # Check if nickname already taken
         existing = db.query(User).filter(User.nickname == data.nickname, User.tg_id != tg_id).first()
         if existing:
             raise HTTPException(status_code=400, detail="Этот никнейм уже занят")
+            
         user.nickname = data.nickname
+        user.last_nickname_updated_at = datetime.utcnow()
     
-    if data.bio is not None:
-        user.bio = data.bio
-        
-    if data.accent_color is not None:
-        user.accent_color = data.accent_color
+    if data.profile_theme is not None:
+        user.profile_theme = data.profile_theme
         
     if data.subscription_tier is not None:
         user.subscription_tier = data.subscription_tier
 
-        
     db.commit()
     db.refresh(user)
     return user
@@ -91,14 +98,22 @@ def update_nickname(tg_id: int, data: NicknameUpdate, db: Session = Depends(get_
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
+    if not user.is_admin and user.last_nickname_updated_at:
+        delta = datetime.utcnow() - user.last_nickname_updated_at
+        if delta.days < 30:
+            days_left = 30 - delta.days
+            raise HTTPException(status_code=400, detail=f"Никнейм можно менять раз в 30 дней. Осталось: {days_left}")
+
     # Check if nickname already taken
     existing = db.query(User).filter(User.nickname == data.nickname, User.tg_id != tg_id).first()
     if existing:
         raise HTTPException(status_code=400, detail="Этот никнейм уже занят")
         
     user.nickname = data.nickname
+    user.last_nickname_updated_at = datetime.utcnow()
     db.commit()
     return {"status": "success", "nickname": user.nickname}
+
 
 
 @router.post("/activity")
