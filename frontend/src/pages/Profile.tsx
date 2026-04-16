@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../store';
-import { fetchUserStories, fetchLikedStories, updateUserProfile, updateUserNickname } from '../api';
+import { fetchUserStories, fetchLikedStories, updateUserProfile } from '../api';
+
 import { Story, HARDNESS_LABEL } from '../types';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Heart, ChevronRight, Clock, CheckCircle, XCircle, Edit3, Crown, Sparkles, Gem, Palette, ShoppingBag, TrendingUp } from 'lucide-react';
