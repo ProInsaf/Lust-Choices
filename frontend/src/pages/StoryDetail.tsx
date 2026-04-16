@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Heart, Play, Share2, Film, Star,
-  Lock, ChevronDown, ChevronUp,
+  Tag, Lock, ChevronDown, ChevronUp,
   Eye, Clock, BarChart3
 } from 'lucide-react';
 import { fetchStory, toggleLike, checkLiked, checkPurchased, recordPlay, trackEvent } from '../api';
