@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../store';
-import { fetchUserStories, fetchLikedStories, updateUserNickname } from '../api';
+import { fetchUserStories, fetchLikedStories, updateUserNickname, createPremiumInvoice, verifyPremium } from '../api';
 import { Story, HARDNESS_LABEL } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Heart, Star, ChevronRight, Clock, CheckCircle, XCircle, User, Edit3, Check, X, Crown, Zap, Shield, Sparkles, TrendingUp, Gem } from 'lucide-react';
+import { BookOpen, Heart, Star, ChevronRight, Clock, CheckCircle, XCircle, Edit3, Check, X, Crown, Zap, Shield, Sparkles, TrendingUp, Gem } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 
 const STATUS_CONFIG = {
@@ -13,8 +13,45 @@ const STATUS_CONFIG = {
 };
 
 // ── Subscription Card ─────────────────────────────────────────────────────────
-function SubscriptionSection({ currentTier }: { currentTier: string }) {
-  const isPremium = currentTier === 'premium';
+function SubscriptionSection({ user, onUpgrade }: { user: any; onUpgrade: (newUser: any) => void }) {
+  const [loading, setLoading] = useState(false);
+  const isPremium = user.subscription_tier === 'premium';
+
+  const handleUpgrade = async () => {
+    setLoading(true);
+    try {
+      // 1. Create Invoice Link
+      const { invoice_link } = await createPremiumInvoice(user.tg_id);
+      
+      // 2. Open Telegram Invoice
+      WebApp.openInvoice(invoice_link, async (status) => {
+        if (status === 'paid') {
+          try {
+            // 3. Verify Payment and Upgrade
+            const updatedUser = await verifyPremium(user.tg_id, 'STAR_PAYMENT_PROCESSED');
+            WebApp.HapticFeedback.notificationOccurred('success');
+            WebApp.showPopup({
+              title: '👑 Premium Активирован!',
+              message: 'Поздравляем! Теперь у вас есть полный доступ ко всем функциям платформы.'
+            });
+            onUpgrade(updatedUser);
+          } catch (e) {
+            console.error('Verification failed', e);
+            WebApp.showPopup({ title: 'Ошибка', message: 'Не удалось подтвердить оплату. Обратитесь в поддержку.' });
+          }
+        } else if (status === 'cancelled') {
+           // Standard cancel, no need for popup
+        } else {
+          WebApp.showPopup({ title: 'Оплата не прошла', message: 'Произошла ошибка при проведении транзакции.' });
+        }
+        setLoading(false);
+      });
+    } catch (err) {
+      console.error('Invoice creation failed', err);
+      WebApp.showPopup({ title: 'Ошибка', message: 'Не удалось создать счет на оплату. Попробуйте позже.' });
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="mb-8">
@@ -110,14 +147,16 @@ function SubscriptionSection({ currentTier }: { currentTier: string }) {
           </div>
           {!isPremium && (
             <button 
-              onClick={() => WebApp.showPopup({ 
-                title: 'Premium подписка', 
-                message: 'Premium подписка будет доступна в ближайшем обновлении! Стоимость: 149 ⭐/мес или 999 ⭐/год (скидка 44%).' 
-              })}
-              className="w-full mt-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-black transition-all active:scale-95"
+              onClick={handleUpgrade}
+              disabled={loading}
+              className="w-full mt-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-black transition-all active:scale-95 flex items-center justify-center gap-2"
               style={{ background: 'linear-gradient(135deg, #EAB308, #F59E0B)' }}
             >
-              Оформить
+              {loading ? (
+                <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+              ) : (
+                <>Оформить <Crown className="w-3.5 h-3.5" /></>
+              )}
             </button>
           )}
         </div>
@@ -125,6 +164,7 @@ function SubscriptionSection({ currentTier }: { currentTier: string }) {
     </div>
   );
 }
+
 
 // ── Nickname Editor ───────────────────────────────────────────────────────────
 function NicknameEditor({ tgId, currentNickname, onSave }: { tgId: number; currentNickname: string; onSave: (nick: string) => void }) {
@@ -377,7 +417,7 @@ export default function Profile() {
         )}
 
         {/* Subscription Section */}
-        <SubscriptionSection currentTier={user.subscription_tier || 'basic'} />
+        <SubscriptionSection user={user} onUpgrade={(newUser) => setUser(newUser)} />
 
         {/* Admin panel link */}
         {user.is_admin && (

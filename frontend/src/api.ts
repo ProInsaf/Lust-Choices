@@ -215,3 +215,22 @@ export const fetchRecommended = async (userTgId: number, limit = 10): Promise<St
   });
   return data;
 };
+
+// ─── Premium ─────────────────────────────────────────────────────────────────
+
+export const createPremiumInvoice = async (tgId: number) => {
+  const { data } = await api.post('/premium/create-invoice', null, {
+    params: { user_tg_id: tgId }
+  });
+  return data as { invoice_link: string };
+};
+
+export const verifyPremium = async (tgId: number, chargeId: string) => {
+  const { data } = await api.post('/premium/verify', {
+    user_tg_id: tgId,
+    telegram_payment_charge_id: chargeId,
+    stars_paid: 149
+  });
+  return data as UserProfile;
+};
+

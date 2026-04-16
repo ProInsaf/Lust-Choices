@@ -105,3 +105,10 @@ class PaymentVerify(BaseModel):
     user_tg_id: int
     telegram_payment_charge_id: str
     stars_paid: int
+
+
+class PremiumPaymentVerify(BaseModel):
+    user_tg_id: int
+    telegram_payment_charge_id: str
+    stars_paid: int
+

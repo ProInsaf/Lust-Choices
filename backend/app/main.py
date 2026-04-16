@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import stories, admin, users, webhook, analytics
+from app.api import stories, admin, users, webhook, analytics, premium
 from app.core.bot import dp, bot
 from app.bot import handlers
 import contextlib
@@ -35,6 +35,8 @@ app.include_router(admin.router)
 app.include_router(users.router)
 app.include_router(webhook.router)
 app.include_router(analytics.router)
+app.include_router(premium.router)
+
 
 
 @app.get("/")
