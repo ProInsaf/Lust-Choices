@@ -4,7 +4,7 @@ import { fetchUserStories, fetchLikedStories } from '../api';
 
 import { Story, HARDNESS_LABEL } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Heart, ChevronRight, Clock, CheckCircle, XCircle, Sparkles, Gem, Settings, TrendingUp } from 'lucide-react';
+import { BookOpen, Heart, ChevronRight, Clock, CheckCircle, XCircle, Sparkles, Gem, TrendingUp } from 'lucide-react';
 import ProfileSettingsModal, { THEMES } from '../components/ProfileSettingsModal';
 
 const STATUS_CONFIG = {
@@ -67,15 +67,8 @@ export default function Profile() {
       {/* ── Profile Header ── */}
       <div className="relative pt-12 px-6">
         
-        {/* Top Actions */}
-        <div className="flex justify-end mb-6 relative z-10">
-            <button 
-                onClick={() => setIsSettingsOpen(true)}
-                className={`w-10 h-10 rounded-xl flex items-center justify-center active:scale-95 transition-all bg-black/40 ${theme.colors.borderStyle} border`}
-            >
-                <Settings className="w-5 h-5 text-white/80" />
-            </button>
-        </div>
+        {/* User Card */}
+
 
 
         {/* User Card */}
