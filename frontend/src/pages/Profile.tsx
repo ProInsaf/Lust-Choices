@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../store';
-import { fetchUserStories, fetchLikedStories, updateUserProfile } from '../api';
+import { fetchUserStories, fetchLikedStories, updateUserProfile, updateUserNickname } from '../api';
 import { Story, HARDNESS_LABEL } from '../types';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Heart, ChevronRight, Clock, CheckCircle, XCircle, Edit3, Check, X, Crown, Zap, Shield, Sparkles, TrendingUp, Gem, ShoppingBag, Palette } from 'lucide-react';
+import { BookOpen, Heart, ChevronRight, Clock, CheckCircle, XCircle, Edit3, Crown, Sparkles, Gem, Palette, ShoppingBag, TrendingUp } from 'lucide-react';
+
 import WebApp from '@twa-dev/sdk';
 
 
@@ -117,96 +118,6 @@ function ColorPicker({ tgId, currentColor, onSave, isPremium }: { tgId: number; 
         ))}
         {!isPremium && <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/5 border border-dashed border-white/20 flex items-center justify-center"><Crown className="w-4 h-4 text-muted-foreground/30" /></div>}
       </div>
-    </div>
-  );
-}
-
-
-
-// ── Nickname Editor ───────────────────────────────────────────────────────────
-function NicknameEditor({ tgId, currentNickname, onSave }: { tgId: number; currentNickname: string; onSave: (nick: string) => void }) {
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(currentNickname);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSave = async () => {
-    const trimmed = value.trim();
-    if (trimmed.length < 3) {
-      setError('Минимум 3 символа');
-      return;
-    }
-    if (trimmed === currentNickname) {
-      setEditing(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await updateUserNickname(tgId, trimmed);
-      WebApp.HapticFeedback.notificationOccurred('success');
-      onSave(res.nickname);
-      setEditing(false);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || 'Этот ник уже занят');
-      WebApp.HapticFeedback.notificationOccurred('error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!editing) {
-    return (
-      <button 
-        onClick={() => { setEditing(true); setValue(currentNickname); }}
-        className="flex-1 h-12 glass rounded-2xl flex items-center justify-center gap-2 text-sm font-bold active:scale-95 transition-all border border-white/5"
-      >
-        <div className="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center">
-          <Edit3 className="w-4 h-4 text-muted-foreground" />
-        </div>
-        Изменить ник
-      </button>
-    );
-  }
-
-  return (
-    <div className="flex-1 animate-fade-in">
-      <div className="flex gap-2">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => { setValue(e.target.value); if (error) setError(null); }}
-            placeholder="Новый никнейм..."
-            className={`w-full h-12 bg-white/5 rounded-2xl px-4 text-sm font-bold border focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all ${
-              error ? 'border-red-500/50' : 'border-white/5'
-            }`}
-            autoFocus
-            maxLength={30}
-          />
-        </div>
-        <button
-          onClick={handleSave}
-          disabled={loading}
-          className="w-12 h-12 rounded-2xl flex items-center justify-center active:scale-90 transition-all border border-green-500/30 bg-green-500/10"
-        >
-          {loading ? (
-            <div className="w-4 h-4 border-2 border-green-400/30 border-t-green-400 rounded-full animate-spin" />
-          ) : (
-            <Check className="w-5 h-5 text-green-400" />
-          )}
-        </button>
-        <button
-          onClick={() => { setEditing(false); setError(null); }}
-          className="w-12 h-12 rounded-2xl flex items-center justify-center active:scale-90 transition-all border border-white/5 bg-white/5"
-        >
-          <X className="w-5 h-5 text-muted-foreground" />
-        </button>
-      </div>
-      {error && (
-        <p className="text-[10px] text-red-400 font-bold mt-1.5 px-1 animate-fade-in">{error}</p>
-      )}
     </div>
   );
 }

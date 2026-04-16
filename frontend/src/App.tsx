@@ -97,11 +97,11 @@ function AppContent() {
             subscription_tier: 'basic',
             subscription_expires_at: null,
             stories_created_this_month: 0,
-            last_limit_reset_at: null,
+            last_limit_reset_at: undefined,
             created_at: new Date().toISOString(),
             last_active: new Date().toISOString(),
-
           });
+
         });
     }
   }, [setUser]);

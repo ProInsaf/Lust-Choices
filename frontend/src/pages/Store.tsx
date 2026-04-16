@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../store';
 import { createPremiumInvoice, verifyPremium } from '../api';
-import { Crown, Zap, Shield, Sparkles, Gem, Check, ChevronLeft, CreditCard } from 'lucide-react';
+import { Crown, Zap, Sparkles, Gem, Check, CreditCard } from 'lucide-react';
+
 import { useNavigate } from 'react-router-dom';
 import WebApp from '@twa-dev/sdk';
 
