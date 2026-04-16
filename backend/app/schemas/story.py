@@ -101,6 +101,8 @@ class UserUpdate(BaseModel):
     nickname: Optional[str] = None
     bio: Optional[str] = None
     accent_color: Optional[str] = None
+    subscription_tier: Optional[str] = None
+
 
 
 

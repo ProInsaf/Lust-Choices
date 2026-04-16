@@ -145,6 +145,44 @@ export default function Store() {
                 </div>
             </div>
         </div>
+
+        {/* Admin Debug Bypass */}
+        {user.is_admin && (
+             <div className="mt-12 p-6 rounded-3xl border border-red-500/20 bg-red-500/5 animate-pulse-slow">
+                <h4 className="text-[10px] font-black uppercase tracking-widest text-red-500 mb-3">Admin Debug Panel</h4>
+                <div className="flex gap-2">
+                    <button 
+                        onClick={async () => {
+                            setLoading(true);
+                            try {
+                                const up = await verifyPremium(user.tg_id, 'ADMIN_TEST_BYPASS');
+                                setUser(up);
+                                WebApp.HapticFeedback.notificationOccurred('success');
+                            } finally { setLoading(false); }
+                        }}
+                        className="flex-1 py-3 rounded-xl bg-red-500 text-white text-[10px] font-black uppercase tracking-widest"
+                    >
+                        Bypass Free
+                    </button>
+                    <button 
+                        onClick={async () => {
+                            setLoading(true);
+                            try {
+                                // Since I don't have a direct verifyBasic, I'll use the new PATCH capability
+                                const { updateUserProfile } = await import('../api');
+                                const up = await updateUserProfile(user.tg_id, { subscription_tier: 'basic' });
+                                setUser(up);
+                                WebApp.HapticFeedback.notificationOccurred('warning');
+                            } finally { setLoading(false); }
+                        }}
+                        className="flex-1 py-3 rounded-xl border border-red-500/30 text-red-500 text-[10px] font-black uppercase tracking-widest"
+                    >
+                        Downgrade
+                    </button>
+                </div>
+             </div>
+        )}
+
       </div>
     </div>
   );

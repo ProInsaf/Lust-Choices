@@ -28,6 +28,10 @@ def update_user_profile(tg_id: int, data: UserUpdate, db: Session = Depends(get_
     if data.accent_color is not None:
         user.accent_color = data.accent_color
         
+    if data.subscription_tier is not None:
+        user.subscription_tier = data.subscription_tier
+
+        
     db.commit()
     db.refresh(user)
     return user
