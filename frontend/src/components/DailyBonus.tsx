@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Gift, CheckCircle2, Clock, Star } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Gift, CheckCircle2, Star } from 'lucide-react';
 import WebApp from '@twa-dev/sdk';
 
 export default function DailyBonus() {

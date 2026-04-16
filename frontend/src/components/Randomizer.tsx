@@ -1,7 +1,5 @@
-import React from 'react';
-import { Shuffles, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAppStore } from '../store';
 import { fetchStories } from '../api';
 import WebApp from '@twa-dev/sdk';
 

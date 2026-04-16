@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Sparkles, User, Check, AlertCircle } from 'lucide-react';
 import { updateUserNickname } from '../api';
-import { useAppStore } from '../store';
 import WebApp from '@twa-dev/sdk';
 
 interface OnboardingProps {
